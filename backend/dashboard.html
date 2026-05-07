@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Phục Hồi Chức Năng Cổ Tay</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <header>
+        <h1>Dashboard cổ tay rehab</h1>
+        <div id="status-bar">
+            Cập nhật lúc: <span id="last-update">--:--:--</span>
+            &nbsp;|&nbsp; Tự cập nhật mỗi 10s
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <!-- ── CỘT TRÁI: DANH SÁCH BỆNH NHÂN ── -->
+        <aside class="sidebar">
+            <h2>Bệnh Nhân</h2>
+            <div id="patient-list"></div>
+            <div style="padding: 12px 16px; border-top: 1px solid #1e3040; margin-top: 8px;">
+                <button onclick="openNewPatientModal()" style="width:100%; padding:8px; background:#0d2e3f; color:#00bcd4;
+                           border:1px solid #00bcd4; border-radius:6px; cursor:pointer; font-size:0.85rem;">
+                    + Thêm Bệnh Nhân Mới
+                </button>
+            </div>
+        </aside>
+
+        <!-- ── CỘT PHẢI: NỘI DUNG CHÍNH ── -->
+        <main class="main">
+
+            <!-- Màn hình trống khi chưa chọn bệnh nhân -->
+            <div id="empty-state">
+                <div class="icon">👤</div>
+                <p>Chọn một bệnh nhân bên trái để xem hồ sơ</p>
+            </div>
+
+            <!-- Hồ sơ bệnh nhân -->
+            <div id="patient-detail" style="display:none;">
+
+                <!-- Thông tin & nút hành động -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <div>
+                        <h2 id="patient-fullname" style="color:#e0e0e0; font-size:1.1rem;"></h2>
+                        <div id="patient-meta" style="font-size:0.8rem; color:#607d8b; margin-top:4px;"></div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="openEditPatientModal()" style="padding:7px 14px; background:#1e3040; color:#00bcd4;
+                                   border:1px solid #1e3040; border-radius:6px; cursor:pointer; font-size:0.82rem;">
+                            Sửa hồ sơ
+                        </button>
+                        <button onclick="deleteCurrentPatient()" class="btn-danger"
+                            style="padding:7px 14px; font-size:0.82rem;">
+                            🗑 Xóa bệnh nhân
+                        </button>
+                    </div>
+                </div>
+                <hr style="border-color:#1e3040; margin-bottom:16px;">
+
+                <!-- Thống kê tổng quan -->
+                <p class="section-title">Tổng quan</p>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="val" id="stat-sessions">0</div>
+                        <div class="lbl">Phiên Tập</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="val" id="stat-total-time">0</div>
+                        <div class="lbl">Thời gian tập (phút)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="val" id="stat-best-score">0</div>
+                        <div class="lbl">Điểm Cao Nhất</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="val" id="stat-max-angle">0°</div>
+                        <div class="lbl">Góc Trái Lớn Nhất</div>
+                    </div>
+                </div>
+
+                <!-- Lịch sử phiên tập -->
+                <p class="section-title">Lịch Sử Phiên Tập</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Ngày</th>
+                            <th>Thời gian tập</th>
+                            <th>Góc Trái</th>
+                            <th>Góc Phải</th>
+                            <th>Điểm</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="session-table"></tbody>
+                </table>
+
+                <!-- Biểu đồ góc -->
+                <div class="chart-box">
+                    <h3 id="chart-title">Biểu Đồ Góc Cổ Tay — Chọn một phiên tập bên trên</h3>
+                    <canvas id="angle-chart" height="100"></canvas>
+                </div>
+
+                <!-- Ghi chú bác sĩ -->
+                <div class="chart-box" style="margin-top: 16px;">
+                    <h3>Notes</h3>
+                    <textarea id="session-notes" placeholder="Chọn một phiên tập để xem hoặc nhập ghi chú..." style="width:100%; height:100px; margin-top:10px; background:#0f1923;
+                               color:#e0e0e0; border:1px solid #1e3040; border-radius:6px;
+                               padding:10px; font-family:'Segoe UI',sans-serif; font-size:0.88rem;
+                               resize:vertical;" disabled></textarea>
+                    <button id="save-notes-btn" onclick="saveNotes()" style="margin-top:10px; padding:8px 20px; background:#00bcd4; color:#000;
+                               border:none; border-radius:6px; cursor:pointer; font-weight:600;
+                               font-size:0.85rem;" disabled>Save</button>
+                    <span id="notes-status" style="margin-left:12px; font-size:0.8rem; color:#607d8b;"></span>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Thêm / Sửa Bệnh Nhân -->
+    <div class="modal-overlay" id="patient-modal">
+        <div class="modal">
+            <h2 id="modal-title">👤 Thêm Bệnh Nhân Mới</h2>
+            <label>Họ và Tên *</label>
+            <input type="text" id="modal-name" placeholder="Nguyễn Văn A">
+            <label>Ngày Sinh</label>
+            <input type="date" id="modal-dob">
+            <label>Chẩn Đoán / Tình Trạng</label>
+            <textarea id="modal-diagnosis"
+                placeholder="Ví dụ: Chấn thương cổ tay phải sau phẫu thuật, ROM hạn chế..."></textarea>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+                <button class="btn-save" onclick="savePatientModal()">💾 Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS ở cuối body để DOM đã load đầy đủ trước khi script chạy -->
+    <script src="dashboard.js"></script>
+
+</body>
+
+</html>

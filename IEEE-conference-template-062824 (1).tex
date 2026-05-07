@@ -1,0 +1,134 @@
+  % =========================
+  % main.tex (Overleaf)
+  % =========================
+  \documentclass[conference]{IEEEtran}
+
+  \usepackage[utf8]{inputenc}
+  \usepackage{graphicx}
+  \usepackage{amsmath, amssymb}
+  \usepackage{booktabs}
+  \usepackage{siunitx}
+  \usepackage{cite}
+  \usepackage{placeins}
+  \usepackage{graphicx}
+  \usepackage{subcaption}
+  \usepackage{placeins}
+  \usepackage{float}
+  \usepackage{tikz}
+  \usepackage{xcolor}
+
+
+
+  \title{Design and Implementation of an Interactive Wrist Rehabilitation System Integrated with a Web-based Game}
+
+  \author{
+  \IEEEauthorblockN{Le Quoc Viet, Tran Quoc Loc, Tran Quang Minh, Nguyen Phan Kien$^{*}$ }
+  \IEEEauthorblockA{\textit{Students of Biomedical Engineering}, School of Electrical and Electronic Engineering (SEEE), HUST\\
+  Hanoi, Vietnam\\
+  Email: \{viet.lq233987, loc.tq233966, minh.tq233971\}@sis.hust.edu.vn}
+  *Corresponding author: kien.nguyenphan@hust.edu.vn
+  }
+
+  \begin{document}
+  \maketitle
+
+  % =========================
+  % Abstract & Keywords
+  % =========================
+  \begin{abstract}
+    Physical therapy for wrist rehabilitation often suffers from low patient compliance due to repetitive and monotonous exercises. This paper presents an interactive wrist rehabilitation system that combines a mechatronic device with a web-based game to enhance patient engagement through "gamification." The system utilizes an Arduino Nano-based controller, a DC gear motor for potential force feedback, and a high-resolution rotary encoder to track wrist movement. Data is transmitted to a host computer via the Web Serial API, enabling a browser-based game to respond in real-time to the patient's physical actions. A two-point calibration algorithm ensures that the device's operational range is accurately mapped to the game field, adapting to individual physical constraints. Preliminary testing demonstrates a smooth, low-latency interaction, providing a cost-effective and engaging solution for home-based telerehabilitation.
+  \end{abstract}
+
+  \begin{IEEEkeywords}
+    Wrist rehabilitation, Bio-mechatronics, Web Serial API, Gamification, Telerehabilitation, Arduino Nano, Encoder.
+  \end{IEEEkeywords}
+
+  % =========================
+  % I. Introduction
+  % =========================
+  \section{Introduction}
+
+  Wrist rehabilitation is a critical component of physical therapy for patients recovering from strokes, surgical procedures, or orthopedic injuries. Traditional rehabilitation protocols often involve repetitive manual exercises that, while effective, frequently lead to low patient motivation and inconsistent engagement \cite{phan2016pork}. To address these challenges, the integration of bio-mechatronic devices with interactive software, a concept known as "gamification," has emerged as a promising strategy to improve therapeutic outcomes by making exercise more engaging and providing quantitative feedback.
+
+  In this study, we design and implement a cost-effective wrist rehabilitation system. The hardware utilizes an Arduino Nano microcontroller interfaced with a DC gear motor and a high-resolution rotary encoder to capture patient movement with high precision. Unlike traditional systems that require specialized software installations, our implementation leverages the modern Web Serial API to establish direct communication between the hardware and a browser-based game. This approach enables a cross-platform, accessible, and low-latency interaction where physical wrist rotation translates directly into actions within a virtual environment.
+
+  The following sections describe the system architecture, the mechatronic design, the software integration protocol, and the preliminary results of the interactive feedback loop.
+
+  \section{System Architecture and Mechatronic Design}
+
+  The proposed system is based on a closed-loop architecture where the patient's physical movement is sensed, processed, and visualized in real-time.
+
+  \subsection{Main Controller (Arduino Nano)}
+  The Arduino Nano (Atmega328P) serves as the central processing unit. Its compact form factor and support for hardware interrupts make it ideal for reading high-frequency pulses from rotary encoders. The controller executes a real-time loop that samples the encoder position every 250 milliseconds and transmits the data via a USB-to-Serial bridge.
+
+  \subsection{Sensing and Feedback (Encoder HN3806)}
+  Movement tracking is achieved using an HN3806-AB incremental rotary encoder with a resolution of 600 pulses per revolution (PPR). By monitoring the phase difference between two output channels (A and B), the system determines both the angular displacement and the direction of rotation.
+
+  \subsection{Mechanical Actuation (GA25 DC Motor)}
+  A GA25 DC gear motor is integrated into the rotation axis. While currently serving as the mechanical joint and baseline for movement, its future role involves providing active resistance or passive assistance through a PWM-driven L298N driver, allowing the therapy to adapt to the patient's muscle strength.
+
+  \section{Software Integration and Gamification}
+
+  The software layer bridges the gap between mechanical motion and digital interaction through three main components: Serial Communication, Calibration, and the Game Engine.
+
+  \subsection{Web Serial API Integration}
+  A significant technical contribution of this work is the use of the Web Serial API. This allows the web-based game (HTML5/JavaScript) to access the USB serial port directly without local drivers or intermediate servers. A regular expression-based parser in the browser processes incoming strings (e.g., "S:642") to update the virtual character's position.
+
+  \subsection{Two-Point Calibration Algorithm}
+  To account for individual variations in the patient's Range of Motion (ROM), we implemented a two-point calibration routine. The user is prompted to rotate their wrist to the maximum Left and Right positions. These pulse values are stored in the browser's \textit{localStorage}, enabling the system to map the physical ROM precisely to the 2D coordinate system of the game canvas:
+  \begin{equation}
+    x_{game} = \frac{pulse_{current} - pulse_{min}}{pulse_{max} - pulse_{min}} \times Width_{canvas}
+  \end{equation}
+
+  \subsection{Balloon Adventure Game}
+  The interactive feedback is provided by "Balloon Adventure," a high-speed arcade game where the player controls a balloon's horizontal position to collect items and avoid obstacles. The direct mapping (absolute positioning) ensures that the virtual movement feels natural and provides immediate visual biofeedback.
+
+  \begin{figure}[!ht]
+      \centering
+      % \includegraphics[width=0.80\linewidth]{rehab_setup.png}
+      \caption{Experimental setup of the wrist rehabilitation device. The system includes an Arduino Nano controller and an HN3806 rotary encoder integrated into a mechanical joint.}
+      \label{fig:setup}
+  \end{figure}
+
+
+
+  \section{Results and Performance}
+
+  The integrated system was tested to evaluate its responsiveness and synchronization between the mechatronic device and the web application.
+
+  \subsection{System Integration and Communication}
+  Physical rotation of the mechatronic joint was successfully captured by the HN3806 encoder and transmitted to the browser. The Web Serial API achieved a stable data transfer rate at 115200 baud, with a processing latency of less than 50ms. This low latency is crucial for maintaining the "immersion" factor in gamified rehabilitation.
+
+  \subsection{Calibration Accuracy}
+  The two-point calibration routine proved effective in normalizing different user capabilities. By storing the minimum and maximum pulse values in \textit{localStorage}, the game character's movement consistently covered the full width of the screen regardless of the physical limits of the user's wrist rotation (ROM).
+
+  \section{Conclusion and Future Work}
+
+  We have successfully designed and implemented an interactive wrist rehabilitation system that bridges mechatronic hardware with modern web technologies. The use of "gamification" through the \textit{Balloon Adventure} game provides a compelling alternative to monotonous traditional exercises, while direct hardware-to-browser communication via the Web Serial API simplifies the setup for home-use telerehabilitation.
+
+  Future iterations of the system will focus on:
+  \begin{itemize}
+    \item \textbf{Active Resistance:} Implementing a PID-based control loop on the GA25 motor to provide variable resistance, allowing for strength-building therapy.
+    \item \textbf{Safety Mechanisms:} Integrating mechanical limit switches and software-based torque monitoring to prevent excessive rotation beyond the anatomical safety range.
+    \item \textbf{Data Analytics:} Developing a cloud-based dashboard to track patient progress over time, enabling physical therapists to monitor recovery remotely.
+  \end{itemize}
+
+  \bibliographystyle{IEEEtran}
+  \begin{thebibliography}{99}
+
+  \bibitem{phan2016pork}
+  D. T. Trung, N. P. Kien, D. H. Tran, C. H. Do, and A. V. Tran, ``Electrical Impedance Measurement for Assessment of the Pork Aging: a Preliminary Study,'' in \textit{Proc. Int. Conf. Adv. Technol. Commun. (ATC)}, Hanoi, Vietnam, 2016, pp. 222--227.
+
+  \bibitem{hoki1}
+  K. C. Cheng, J. Y. Liu, and Y. H. Chang, ``Electrical impedance spectroscopy for meat quality assessment: A review,'' \textit{J. Food Eng.}, vol. 264, p. 109673, 2020.
+
+  \bibitem{webserial}
+  Google Developers, ``Read from and write to a serial port,'' \textit{web.dev}, 2020. [Online]. Available: https://web.dev/serial/.
+
+  \bibitem{rehab1}
+  M. J. Johnson et al., ``Robot-assisted physical therapy for activities of daily living: A review,'' \textit{J. Rehabil. Res. Dev.}, 2005.
+
+  \end{thebibliography}
+ 
+
+  \end{document}

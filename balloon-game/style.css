@@ -1,0 +1,272 @@
+@font-face {
+    font-family: 'PixelFont';
+    src: local('Courier New');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #f0f0f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.game-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #ffffff;
+    padding: 0;
+    border: 4px solid #333;
+    box-shadow: 8px 8px 0 #333;
+}
+
+.game-header {
+    display: flex;
+    gap: 20px;
+    padding: 10px 20px;
+    width: 100%;
+    background: #fff;
+    border-bottom: 3px solid #333;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stat {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.stat span {
+    color: #e74c3c;
+}
+
+.pause-btn {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.pause-btn:hover {
+    background: #555;
+}
+
+#gameCanvas {
+    display: block;
+    background: #ffffff;
+}
+
+/* Overlay Screens */
+.game-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    z-index: 100;
+}
+
+.game-overlay.hidden {
+    display: none;
+}
+
+.overlay-content {
+    text-align: center;
+    padding: 40px;
+}
+
+.overlay-content h1 {
+    font-size: 36px;
+    color: #333;
+    margin-bottom: 10px;
+    letter-spacing: 3px;
+}
+
+.overlay-content h2 {
+    font-size: 24px;
+    color: #666;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+}
+
+.instructions {
+    margin: 30px 0;
+    padding: 20px;
+    border: 2px dashed #999;
+}
+
+.instructions p {
+    color: #555;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+.pixel-btn {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 15px 40px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: 2px;
+    transition: all 0.1s;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.pixel-btn:hover {
+    background: #555;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #000;
+}
+
+.pixel-btn.disabled {
+    filter: grayscale(1);
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pixel-btn.disabled:hover {
+    transform: none;
+    box-shadow: 4px 4px 0 #000;
+}
+
+/* Safety Menu Styling */
+.safety-menu {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fdfdfd;
+    border: 3px solid #333;
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 #ccc;
+    text-align: left;
+}
+.safety-menu h3 {
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: #e74c3c;
+    text-align: center;
+}
+.input-group {
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.input-group input {
+    width: 60px;
+    padding: 5px;
+    font-family: inherit;
+    font-weight: bold;
+    border: 2px solid #333;
+}
+.menu-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.pixel-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+}
+
+.pixel-btn-small {
+    background: #3498db;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 2px 2px 0 #2980b9;
+}
+
+.pixel-btn-small:hover {
+    background: #2980b9;
+}
+
+.pixel-btn-small.connected {
+    background: #27ae60;
+    box-shadow: 2px 2px 0 #2ecc71;
+}
+
+.final-score {
+    font-size: 24px;
+    color: #333;
+    margin: 20px 0;
+    font-weight: bold;
+}
+
+.final-score span {
+    color: #e74c3c;
+}
+
+.new-record {
+    color: #f39c12;
+    font-size: 18px;
+    margin-bottom: 20px;
+    animation: blink 0.5s infinite;
+}
+
+.new-record.hidden {
+    display: none;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Responsive */
+@media (max-width: 500px) {
+    .game-header {
+        gap: 10px;
+        padding: 8px 10px;
+    }
+
+    .stat {
+        font-size: 12px;
+    }
+
+    .overlay-content h1 {
+        font-size: 28px;
+    }
+
+    .overlay-content h2 {
+        font-size: 18px;
+    }
+}

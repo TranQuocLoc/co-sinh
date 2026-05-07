@@ -1,0 +1,600 @@
+Results in Engineering 22 (2024) 102336
+Available online 31 May 2024
+2590-1230/© 2024 The Author. Published by Elsevier B.V. This is an open access article under the CC BY-NC-ND license (http://creativecommons.org/licenses/by-
+nc-nd/4.0/).
+Design and development of a wrist rehabilitation device with an 
+interactive game 
+Cong Vo Duy a,b,* 
+a Industrial Maintenance Training Center, Ho Chi Minh City University of Technology (HCMUT), 268 Ly Thong Kiet Street, District 10, Ho Chi Minh City, 700000, Viet 
+Nam 
+b Vietnam National University Ho Chi Minh City (VNU-HCM), Linh Trung Ward, Thu Duc City, Ho Chi Minh City, 700000, Viet Nam   
+A R T I C L E  I N F O   
+Keywords: 
+Rehabilitation 
+Wrist robot 
+Interactive game 
+Physiotherapy 
+A B S T R A C T   
+In this paper, a wrist rehabilitation device integrated with an interactive game is developed. The device is 
+designed for flexion/extension and ulnar/radial motions. The motion of the wrist joint is measured by an optical 
+encoder. A hall sensor is also used to measure the force emitted from the DC motor. These data are fed back to the 
+interactive gaming environment to create the movement of goals in the video game. There are two types of 
+interactive games designed. The first requires the practitioner to move their wrist to achieve a specific goal. The 
+second exercise requires the practitioner to move their wrist joint continuously to reach moving targets. In the 
+game interface, therapists can easily adjust training intensity, training time, and change training limits 
+depending on the recovery status of the patients. At the same time, it also records the patient’s training efforts 
+and monitors visual graphs of performance during exercise. The experiments were conducted to tune the games 
+and to get a preliminary evaluation of the device. The feedback from the patients and therapists are recorded to 
+improve the device and game interfaces. Game parameters are adjusted during the patient’s exercise process 
+under the supervision of a physiotherapist. The values of rotation angle and torque are collected and then 
+presented in graphs so that physiotherapists can assess the patient’s recovery status. The results show that the 
+patients enjoy the games. The therapist is satisfied with the game interface and says that the games are intuitive 
+and easy to play.   
+1. Introduction 
+Every year, around the world, more than 15 million people are at risk 
+of having a stroke. The effects of a stroke can be short-term or long-term, 
+depending on which part of the brain is affected and how quickly it is 
+treated. Stroke survivors can experience widespread disabilities 
+including difficulties with mobility and speech, as well as how they 
+think and feel. Stroke is one of the main factors leading to impaired 
+motor function of the human upper limb. These patients are significantly 
+limited in their daily social and family activities. Stroke patients require 
+appropriate post-injury care and rehabilitation therapy to restore lost 
+abilities and help them return to normal daily activities [1–3]. Typically, 
+this is achieved through a long-term regimen of intensive and repetitive 
+rehabilitation therapy. The rehabilitation therapy requires supervision, 
+monitoring and support from physiotherapists. Another problem is that 
+conventional recovery methods lack quantitative feedback on 
+performance. Therefore, it is difficult to evaluate upper limb mobility 
+without corresponding supporting data. This factor stimulates the 
+application of alternative rehabilitation methods [4–7]. 
+The idea of using robots in rehabilitation therapy has helped solve 
+the above problems. Therefore, many rehabilitation robot systems have 
+been developed [8–12]. The robots are designed to create precise, re­
+petitive movements and can be adjusted to suit the patient’s motor 
+abilities. Rehabilitation robots help reduce physical therapists’ efforts, 
+and they can even provide longer and more intense therapy sessions. 
+Based on integrated sensors, the patient’s recovery status is also more 
+accurately assessed. Thanks to that, the robot provides exercises with 
+intensity appropriate to the recovery condition [13,14]. Rehabilitation 
+robots can be also equipped with a virtual environment to provide an 
+entertaining and motivating background for patients, which can lead to 
+an increment of exercise intensity. For each different damaged limb, 
+there will be robots designed to suit the activities of each limb. Some 
+* Industrial Maintenance Training Center, Ho Chi Minh City University of Technology (HCMUT), 268 Ly Thong Kiet Street, District 10, Ho Chi Minh City, 700000, 
+Viet Nam. 
+E-mail address: congvd@hcmut.edu.vn.  
+Contents lists available at ScienceDirect 
+Results in Engineering 
+journal homepage: www.sciencedirect.com/journal/results-in-engineering 
+https://doi.org/10.1016/j.rineng.2024.102336 
+Received 1 March 2024; Received in revised form 26 May 2024; Accepted 29 May 2024   
+Results in Engineering 22 (2024) 102336
+2
+rehabilitation robots have been developed for various limbs such as the 
+shoulder, arm, wrist, hand, finger, knee, and ankle. The hand plays an 
+important role in performing activities in daily life. The wrist joint 
+connects the hand to the forearm, helps position complex hand poses, 
+and creates complex and flexible movements in daily activities. There­
+fore, when the wrist joint is damaged, tasks that require flexibility and 
+dexterity are difficult to perform [15–17]. Wrist joint rehabilitation 
+helps patients restore the movements of their wrist joints for daily ac­
+tivities and work. It is as important as hand rehabilitation. 
+The development of wrist rehabilitation robots is a combination of 
+mechanical design, actuators, sensors, control algorithms, software, and 
+exercise design. CR2-Haptic [18] is a portable and compact device for 
+wrist joint rehabilitation. This design used a DC brushed motor to create 
+the rotation motion for the handle. The rotation angle and motor current 
+were measured by a rotary encoder and current sensor, respectively. 
+Various rehabilitation strategies have been designed in a virtual reality 
+environment to enhance the patient recovery process. In Ref. [19], a 
+Universal Haptic Drive device was designed to create a 2-DOF move­
+ment for either arm or wrist joint. The force of two sets of DC motors is 
+controlled by an impedance control algorithm in the training movement. 
+Lee et al. [20] developed a robot wrist that was actuated coaxial 
+spherical parallel mechanism. This design has advantages such as low 
+moving parts inertia, high torque output, and high dynamic motion 
+response. Parallel mechanisms for wrist and forearm rehabilitation are 
+also proposed in RiceWrist [21] and CRAMER [22] robots. Martinez 
+et al. [23] developed a Wrist Gimbal device with 3-DOF for the forearm 
+and wrist rehabilitation. The device used the Maxon DC servo motors to 
+create motion in position trajectory tracking tasks of passive exercises 
+and generate resistive torques in active exercises. The control system 
+used a Quanser Q8-USB data acquisition board together with Matlab/­
+Simulink and Quanser QuaRC software to read data from sensors. 
+Another design with 3-DOF motion was also proposed in Ref. [24] called 
+Physiotherabot/WF. This robot used the Hybrid Impedance Control 
+(HIC) method in the control system, and it can perform passive, active 
+assisted, isotonic, isometric and isokinetic exercises. NU-Wrist robot is a 
+novel self-aligning 3-DOF robotic system for wrist and forearm reha­
+bilitation that was proposed in Ref. [25]. The robot was designed with a 
+novel compliant robot handle that can self-align the axes wrist joints and 
+rotation axes of the robot during therapy exercises. Dynamixel MX-106 
+and MX-28 servomotors were used as joint actuators in this prototype to 
+simplify electronic circuits and control algorithms. Lue et al. [26] 
+developed a compact wrist rehabilitation robot that uses a curvilinear 
+guide. A “moving window” control strategy based on impedance control 
+is proposed and implemented on the robot. 
+In recent years, interactive games have been rapidly applied as new 
+treatment approaches in stroke rehabilitation. More and more game 
+consoles are being applied in clinical treatment. Interactive games are 
+designed to help patients reacquaint themselves with real-life move­
+ments and situations in everyday life. Key requirements for motor 
+learning include intensity, frequency, repetition, and task-oriented 
+training can be provided by the software, the interaction between the 
+patient and the game environment makes the patient feel involved in 
+their rehabilitation. Thanks to the adjustment of the degree of difficulty, 
+as well as options in gaming tasks, the virtual systems can accommodate 
+patient needs, abilities, and goals. Video games makes recovery sessions 
+more interesting and engaging for goal-oriented tasks. As the stroke 
+patient’s functional ability progresses, tasks can be easily upgraded 
+using manipulations in a safe environment for the patient [27,28]. 
+Furthermore, the games can be performed without the supervision or 
+intervention of physical therapists. Patients do not need to travel to 
+physical therapy centers to perform exercise sessions. Instead, the 
+therapy process can be performed regularly at home [29]. A recent 
+randomized controlled trial suggests that using commercial video game 
+therapy improves balance, postural control, functionality, quality of life, 
+and motivation in patients with subacute stroke [30,31]. 
+In this paper, a wrist rehabilitation device integrated with an 
+interactive game is developed. The device is designed for flexion/ 
+extension and ulnar/radial motions. The motion of the wrist joint is 
+measured by an optical encoder. This information is fed back to the 
+interactive gaming environment to create the movement of goals in the 
+video game. Thus, creating interaction between the patient’s movement 
+and the virtual environment. Additionally, a hall sensor is also used to 
+measure the force emitted from the motor. Depending on the patient’s 
+condition, the force value will be controlled at an appropriate level. The 
+game interface will be designed so that users can easily adjust training 
+intensity, training time, change training limits depending on recovery 
+status. It also provides visual graphs of performance during exercise, 
+from which physical therapists can accurately assess the patient’s con­
+dition and recovery level. 
+2. Prototype design and fabrication 
+Fig. 1 shows the design of the prototype for the wrist rehabilitation 
+device. The design is quite simple. It consists of a DC motor to drive a 
+crank. The crank is connected directly to the shaft of the DC motor 
+through a flange coupling. To measure the rotation angle of the motor, 
+an encoder is used. The motion of the motor is transmitted through the 
+encoder through the cable-driven. A rotation and slider joint between 
+the crank and the handle help change the direction of the wrist motion. 
+In Fig. 2, the handle is vertical, providing flexion/extension motion. In 
+Fig. 3, the handle is horizontal, providing ulnar/radial motion. After 
+adjusting the appropriate position for the handle, it is fixed to the crank 
+by tightening the 2 bolts on the crank to secure the handle. The human 
+forearm will be placed on a pedestal and held in place by an adjustable 
+fabric strap. 
+Fig. 4 shows the realistic prototype. The components for mounting 
+the motor and the crank are made from aluminium alloy to ensure ri­
+gidity. The handle is made using 3D printing technology with a steel 
+shaft at the end. The pedestal is also made with a 3D printer. 
+The motor used is the XD340 motor, it can provide a maximum 
+torque of 4Nm. It operates at a voltage of 12 V, and the maximum 
+current is 3 A. The encoder used to measure the rotation angle of the 
+motor is E6B2-CWZ6C 4000P/R 0.5 M. The resolution of the encoder is 
+400 pulse/revolution. 
+In this project, to control the motor, the Arduino Uno board is used. 
+The function of the Arduino board is that read signals from sensors to 
+control the movement of the motor. In this project, a current sensor is 
+used to determine the torque of the motor. Therefore, we can adjust the 
+output torque of the motor. Fig. 5 shows the wiring circuit of the elec­
+tronic system. 
+The current sensor used is the Hall sensor ACS712 5 A. The current 
+sensor is connected in series with the motor driver. The output of the 
+current sensor is an analog signal. So, the output pin of ACS712 is 
+connected to the analog pin A0 of Arduino. The output value from the 
+Fig. 1. The prototype for the wrist rehabilitation device.  
+C. Vo Duy                                                                                                                                                                                                                                        
+Results in Engineering 22 (2024) 102336
+3
+sensor is the voltage that is linear to the current to be measured with a 
+sensitivity of 63–190 mV/A. To control the motor, the BTS7960 driver is 
+used. 
+To create impedance, the motor will be torque controlled (control 
+the current) using a PID controller: 
+PWM = Kpe(t) + Kd
+de(t)
+dt
++ Ki
+∫
+e(t)
+(1)  
+where e(t) is the error between the measured torque τm(t) and the 
+desired torque τd(t): 
+e(t) = τm(t) −τd(t)
+(2)  
+Since the torque of a DC motor is proportional to the current (τ = ki), it 
+is possible to determine the value of the motor’s torque by a current 
+sensor. The torque of the motor is not controlled at a fixed value but 
+changes according to the position of the motor. The desired torque τd(t)
+will depend on the rotation angle and angular velocity of the motor: 
+τd(t) = kα(t) + bω(t)
+(3)  
+where k is the stiffness coefficient, b is the damping coefficient, α is the 
+rotation angle of the motor measured from the encoder, ω(t) is the 
+angular velocity of the motor. The angular velocity of the motor is not 
+directly measured but will be determined from the rotation angle of the 
+motor: 
+ω(t) = x(t + Δt) −x(t)
+Δt
+(4) 
+It can be seen that when the motor rotates at a larger angle, the larger 
+torque generated will pull the motor back to its original position. The 
+analog signal from the current sensor must be filtered for noise before 
+being used in the controller. The averaging filter and the compensation 
+filter are used in combination to reduce noise from the sensor. The 
+Arduino will first read 50 consecutive analog values from the sensor and 
+take the average: 
+ADC =
+∑
+50
+i=0
+ADC(i)
+50
+(5) 
+Then, the compensation filter is applied: 
+ADC = α.ADC + (1 −α)Last ADC
+(6) 
+The obtained ADC value will be converted to the current value. The 
+analog-to-digital converter (ADC module) in the Arduino has a resolu­
+tion of 10 bit, so the ADC value will be from 0 to 1023. The ACS712 
+sensor will output a voltage from 0 V to 2.5VDC, corresponding to a 
+current from 0 A to 5 A, we can determine the formula to convert from 
+ADC value to current as follows: 
+I = 5 (512 −
+ADC)
+512
+(7) 
+Fig. 6 shows the step-by-step implementation of the motor control 
+algorithm. First, the Arduino will read the motor rotation angle from the 
+encoder, this angle value will be used to calculate the desired torque 
+value τd(t) according to equations (4) and (3). The Arduino then reads 
+the motor current value from the current sensor. The current value is 
+converted to the motor torque to calculate the error according to 
+equation (2). The PID controller according to equation (1) will be 
+applied to calculate the PWM value to be output to control the motor. 
+Finally, the Arduino will output the PWM signal to the driver to control 
+the motor. 
+The values of the rotation angle and torque of the motor will be sent 
+to the computer for display on the exercise interface to aid in the 
+rehabilitation process. Data communicates between the computer and 
+the Arduino via asynchronous serial communication (UART) with a set 
+baud rate of 38400 bits/sec. 
+3. Development of game interfaces for rehabilitation 
+The game interface is designed using Python programming language 
+with the support of the Tkinter library. Tkinter is a Python library that 
+Fig. 2. Change the direction of the handle to vertical for flexion/exten­
+sion motion. 
+Fig. 3. Change the direction of the handle to vertical for redial/ulnar motion.  
+Fig. 4. The realistic prototype.  
+C. Vo Duy                                                                                                                                                                                                                                        
+Results in Engineering 22 (2024) 102336
+4
+Fig. 5. Wiring circuit to connect electronic devices to each other.  
+Fig. 6. The flowchart of the control algorithm.  
+C. Vo Duy                                                                                                                                                                                                                                        
+Results in Engineering 22 (2024) 102336
+5
+can be used to construct a basic graphical user interface (GUI) applica­
+tions. To communicate between Arduino and the Python program, the 
+pySerial module is used to access and work with serial ports. 
+Fig. 7 shows the main interface screen of the game designed using 
+Python programming. This screen allows the user to select exercises and 
+select different levels of exercise. There are 6 different levels of practice. 
+In which level 0 will not be the resistance from the motor. At other 
+levels, the resistance created by the motor will change as the level in­
+creases. The resistance is changed by varying the coefficients k and b in 
+Equation (3). When the user chooses to change the level, the computer 
+will send down the characters corresponding to the selected level. The 
+Arduino receives the character and will change the k and b coefficients 
+according to the received character. 
+Exercises are divided into two categories. The first requires the 
+practitioner to move the wrist to achieve a specific goal. When the 
+practitioner rotates the wrist joint, the cat on the screen will move 
+accordingly. The trainer’s task is to make the cat achieve the goals in 
+turn, when the final goal is reached, it will return to the original posi­
+tion. Fig. 8 illustrates this exercise. The cat is moved to eat three small 
+fishes and a big fish. Practitioners can choose the limit of the rotation 
+angle to suit their condition. This interface screen has three buttons. The 
+“start” button is used to initiate an exercise when the practitioner is 
+ready. When the practitioner wants to increase the resistance of the 
+motor, he can press the “next level” button. The “back” button is used to 
+return to the main screen. This exercise is suitable for patients in the 
+early stages of recovery. The patient will try to move the wrist to achieve 
+the greatest possible rotation (without resistance from the motor). After 
+the patient has flexed and extended the wrist to the maximum angle, it is 
+possible to switch to exercise with increasing motor resistance to 
+improve wrist strength. 
+The second exercise requires the practitioner to move the wrist joint 
+continuously to reach moving targets. Objects will change position 
+continuously on the screen. Fig. 9 shows the screen interface of this 
+exercise. The player’s task is to move the basket to catch red apples 
+falling in different random positions on the screen. After each time a red 
+apple is caught, the score will increase by one unit. The maximum score 
+will be set in advance. Players complete the mission when they reach the 
+set score. In addition to red apples, there will also be green apples 
+appearing on the screen. If the player catches a green apple, two points 
+will be deducted. After a specified time, if the player does not achieve 
+the required score, it will be considered as not completing the mission. 
+4. Experiment results 
+The experiments were performed to tune the game and to get a 
+preliminary evaluation of the device. The experimental process is per­
+formed on patients under the supervision of a physiotherapist. Three 
+patients, two women and one man, participated in the rehabilitation 
+process with the device in three days. Initial feedback from the patients 
+and therapist helped improve the device and the game interface. For 
+example, in the first test, the device could not be used on female patients 
+recovering from a stroke. The reason is that the first design of the device 
+used a motor with a gearbox. The patient has just been injured and her 
+wrist strength is still very weak so she cannot rotate the motor (due to 
+the resistance and friction of the gears in the gearbox). Therefore, we 
+replaced it with another motor without a gearbox. The original game 
+was also designed with a simple, unattractive interface that did not 
+create excitement for patients. After consulting with the physiotherapist, 
+we redesigned the game, making it more lively and attractive. The 
+physiotherapist also requested that the game should be divided into 
+different levels to suit the recovery status of the patients. 
+The games are designed to ensure operability. However, to evaluate 
+the device’s suitability for the rehabilitation of patients, experiments 
+need to be performed to adjust the parameters in the game. With the 
+designed games, the parameters that need to be adjusted are the limit of 
+the wrist’s angle, the maximum resistance torque of the device, the goal 
+of each level, and the range of change in the position of targets. 
+First, the limited parameters of a few healthy adults were recorded. 
+The maximum flexion/extension rotation angle is 80◦, redial/ulnar 
+rotation angle is 20◦. The maximum torque for flexion/extension 
+movement is 4 N.m. These parameters are used for the highest level of 
+the game (level 5). The game is divided into 6 levels. The levels are not 
+evenly spaced but must be divided into levels appropriate to the pa­
+tient’s condition. According to advice from a physiotherapist, for pa­
+tients who have recently suffered an injury, the recovery process will be 
+slow. Therefore, we set the limit of the levels 0, 1 and 2 to be close to 
+each other. The testing process on three patients helped determine the 
+limits of each level. Table 1 shows the value of each level. 
+In the early stage, the patients can rotate the wrist to reach an angle 
+Fig. 7. The main screen of the game was designed using Python program­
+ming language. 
+Fig. 8. The interface screen of the reach target exercise consists of three small 
+targets and a big final target. 
+Fig. 9. The interface screen of the earn score exercise.  
+C. Vo Duy                                                                                                                                                                                                                                        
+Results in Engineering 22 (2024) 102336
+6
+up to 50◦, however, the wrist strength is still weak. The exercise process 
+will help patients gradually increase wrist strength as well as the ability 
+to control movement. The goal of rotation angle will not be fixed, 
+depending on the patient’s ability, the physiotherapist will enter the 
+maximum rotation angle value into the game. 
+After adjusting the game parameters, experiments are performed to 
+obtain preliminary assessments showing the device’s suitability during 
+the patient’s recovery. Experiments on both normal people and patients 
+have been performed. The results are shown in Figs. 10–12. The graphs 
+show the rotation angle of the wrist joint and the motor torque over time 
+during an exercise to achieve the required goal. 
+Fig. 10 shows the results of a normal person. For undamaged wrist 
+joints, the movements are flexible, and the wrist torque is strength, so 
+the target angle can be quickly achieved. The practitioner only needs 
+about 1.5s to rotate the wrist to reach the required angle. The graph in 
+Fig. 10 will be used as a reference to evaluate the practitioner during the 
+rehabilitation period. 
+Fig. 11 is the result of a patient for the first time using the device. 
+Based on the graph, it can be seen that it is quite difficult for the patient 
+to move the wrist joint to the required angle value. The patient needs to 
+stop at intermediate goals before reaching the final goal, so the graph 
+has a ladder shape. The time to complete the request is therefore also 
+extended up to 6s. The patient also cannot maintain the maximum 
+rotation for a long enough time. Due to the pulling force from the motor, 
+the patient’s wrist angle decreased from 35◦to 30◦in the maintenance 
+time. Comparing the graph between a normal person and a recovering 
+person, we can evaluate the patient’s condition. In the early stages, the 
+patients will not be able to control the movement of the wrist joint, so 
+the movements will be interrupted. The patients will move in small steps 
+to reach the target angle. After a period of practice, the patient will 
+gradually control the movement and strength of the wrist. Movements 
+become smoother and graphs also become smoother. Fig. 12 shows re­
+sults after a period of practice with the device of the above patient. The 
+graph shows that the patient has gradually become familiar with the 
+device. Even though it was only for a short time, it also showed 
+improvement in wrist joint mobility. The time to reach the required 
+rotation angle has been reduced to 4s for two days of exercise. Although 
+there are still interruption motions, the stopping time at intermediate 
+points is also reduced. If compared with the graph of the hand joint of a 
+person who has not suffered damage, this patient’s condition has not yet 
+reached a normal state. At this stage, the patient can switch to contin­
+uous exercise mode to continue improving the flexibility and movement 
+speed of the wrist joint. 
+Continuous exercises will help patients improve wrist flexibility. 
+Patients should start with a low score and gradually increase the score 
+during practice to gradually adapt. The movement speed of the targets in 
+this game is also adjusted to match the movement speed of the patient’s 
+wrist joint. The speed will gradually increase with each level. 
+Experiments have shown that patients enjoy participating in reha­
+bilitation exercises with the device. This makes rehabilitation exercises 
+entertaining and engaging and keeps the patients motivated longer. The 
+therapists were satisfied with our game interface and she said that the 
+games were intuitive and easy to play so patients did not need much 
+training. 
+5. Conclusion 
+This paper has developed a wrist robot for rehabilitation therapy. 
+The device is designed to easily switch between flexion/extension mo­
+tion and ulnar/radial motion, and the handle position is also adjustable 
+to fit a variety of patients. The device is used by patients for active ex­
+ercises. The motor will create resistance force against the patient’s 
+movement during therapy. The resistance force increases according to 
+the wrist joint angle. The current sensor and encoder are used in the 
+electronics circuit to measure the motor current and rotation angle, 
+respectively. The desired torque is calculated from the position of the 
+wrist. The PID controller is applied to the motor can create the torque 
+equal to the desired value. 
+A game interface has been designed to create an interactive envi­
+ronment and make the patient feel involved in their rehabilitation. The 
+gaming interface has 6 levels to choose from, the resistance created by 
+the motor increases with each level. So, the patient can easily adjust 
+training intensity, training time, change training limits depending on 
+recovery status. The software also records the patient’s training efforts 
+and monitors visual graphs of performance during exercise, from which 
+physical therapists can accurately assess the patient’s condition and 
+recovery level. Experimental results were performed to tune the game 
+and get a preliminary evaluation of the device. Initial feedback from the 
+patients and therapist helped improve the device and the game inter­
+face. To make the device can be used in rehabilitation process, some 
+parameters of the games were adjusted such as the parameters that need 
+to be adjusted are the limit of the wrist’s angle, the maximum resistance 
+torque of the device, the goal of each level, and the range of change in 
+the position of targets. 
+Table 1 
+The limit of rotation angle and resistance torque.   
+Wrist angle 
+Resistance Torque 
+Level 0 
+0–50◦
+0 Nm 
+Level 1 
+0–50◦
+0.5 Nm 
+Level 2 
+0–50◦
+1 Nm 
+Level 3 
+0–70◦
+2 Nm 
+Level 4 
+0–70◦
+3 Nm 
+Level 5 
+0–80◦
+4 Nm  
+Fig. 10. Result of a normal person using the device to conduct extension motion to reach the target at the position of 40◦. The left picture is the rotation angle and the 
+right is the resistance torque of the motor. 
+C. Vo Duy                                                                                                                                                                                                                                        
+Results in Engineering 22 (2024) 102336
+7
+After adjusting the game parameters, experiments are performed to 
+obtain preliminary assessments showing the device’s suitability during 
+the patient’s recovery. Experiments on both normal people and patients 
+have been performed. The normal person only needs about 1.5s to rotate 
+the wrist to reach the required angle and the graph of motion during 
+exercise is very smooth. Patients who exercise for the first time find it 
+more difficult to achieve the goal; it takes them more than 6s to complete 
+the task. They cannot move the wrist joint continuously and need to 
+pause midway to gain momentum. After a period of practice, the patient 
+will gradually control the movement and strength of the wrist. The re­
+sults show that the time to reach the required rotation angle has been 
+reduced to 4s for two days of exercise. 
+CRediT authorship contribution statement 
+Cong Vo Duy: Writing – review & editing, Writing – original draft, 
+Visualization, Validation, Software, Methodology, Investigation, Formal 
+analysis, Conceptualization. 
+Declaration of competing interest 
+The authors declare that they have no known competing financial 
+interests or personal relationships that could have appeared to influence 
+the work reported in this paper. 
+Data availability 
+Data will be made available on request. 
+Acknowledgment 
+We acknowledge Ho Chi Minh City University of Technology 
+(HCMUT), VNU-HCM for supporting this study. 
+References 
+[1] M. Babaiasl, S.H. Mahdioun, P. Jaryani, M. Yazdani, A review of technological and 
+clinical aspects of robot-aided rehabilitation of upper-extremity after stroke, 
+Disabil. Rehabil. Assist. Technol. 11 (4) (2016) 263–280. 
+[2] M. Katan, A. Luft, Global burden of stroke, Semin. Neurol. 38 (2) (2018) 208–211. 
+[3] Meng Q, Liu G, Xu X, Meng Q, Yu H.: Design and Analysis of a Supine Ankle 
+Rehabilitation Robot for Early Stroke Recovery. Machines. Vol. 11, No. 8. 
+https://doi.org/10.3390/machines11080787. 
+[4] C. Greco, T.H. Weerakkody, V. Cichella, L. Pagnotta, C. Lamuta, Lightweight 
+bioinspired exoskeleton for wrist rehabilitation powered by twisted and coiled 
+artificial muscles, Robotics 12 (1) (2023), https://doi.org/10.3390/ 
+robotics12010027. 
+[5] Y. Bouteraa, I. Ben Abdallah, K. Alnowaiser, M.R. Islam, A. Ibrahim, F. Gebali, 
+Design and development of a smart IoT-based robotic solution for wrist 
+rehabilitation, Micromachines 13 (6) (2022). 
+[6] U. Mayetin, S. Kucuk, Design and experimental evaluation of a low cost, portable, 
+3-DOF wrist rehabilitation robot with high physical human–robot interaction, 
+J. Intell. Rob. Syst. 106 (65) (2022). 
+[7] R.S. Gonçalves, L.S.F. Brito, L.P. Moraes, G. Carbone, M. Ceccarelli, A fairly simple 
+mechatronic device for training human wrist motion, Int. J. Adv. Rob. Syst. 17 
+(2020) 1–15. 
+[8] Y. Wang, Q. Xu, Design and testing of a soft parallel robot based on pneumatic 
+artificial muscles for wrist rehabilitation, Sci. Rep. 11 (2021) 1273. 
+[9] J.F. Gallagher, M. Sivan, M. Levesley, Making best use of home-based 
+rehabilitation robots, Appl. Sci. 12 (2022). 
+[10] H. Yu, S. Zheng, J. Wu, L. Sun, Y. Chen, S. Zhang, Z. Qin, A new single-leg lower- 
+limb rehabilitation robot: design, Analysis and Experimental Evaluation. Machines 
+11 (2023). 
+[11] A.S. Arockia Doss, P.K. Lingampally, G.M.T. Nguyen, D. Schilberg, 
+A comprehensive review of wearable assistive robotic devices used for head and 
+Fig. 11. Result of a patient in the first time using the device to conduct the extension motion to reach the target at the position of 35◦.  
+Fig. 12. Result of a patient after using the device for a while.  
+C. Vo Duy                                                                                                                                                                                                                                        
+Results in Engineering 22 (2024) 102336
+8
+neck rehabilitation, Results in Engineering 19 (101306) (2023), https://doi.org/ 
+10.1016/j.rineng.2023.101306. 
+[12] F. Amin, A. Waris, J. Iqbal, S.O. Gilani, M.Z. Ur Rehman, S. Mushtaq, N.B. Khan, M. 
+I. Khan, M. Jameel, N. Tamam, Maximizing stroke recovery with advanced 
+technologies: a comprehensive assessment of robot-assisted, EMG-Controlled 
+robotics, virtual reality, and mirror therapy interventions, Results in Engineering 
+21 (2024) 101725, https://doi.org/10.1016/j.rineng.2023.101725. 
+[13] M.A. Khan, M. Saibene, R. Das, I. Brunner, S. Puthusserypady, Emergence of 
+flexible technology in developing advanced systems for post-stroke rehabilitation: 
+a comprehensive review, J. Neural. Eng. 18 (2021). 
+[14] K. Shi, A. Song, Y. Li, H. Li, D. Chen, L. Zhu, A cable-driven three-DOF wrist 
+rehabilitation exoskeleton with improved performance, Front. Neurorob. 15 
+(2021). 
+[15] L. Zhang, J. Li, Y. Cui, M. Dong, B. Fang, P. Zhang, Design and performance 
+analysis of a parallel wrist rehabilitation robot (PWRR), Robot. Autonom. Syst. 125 
+(2020) 103390, https://doi.org/10.1016/j.robot.2019.103390. 
+[16] P. Zaixiang, W. Tongyu, Y. Junzhi, L. Shuai, Z. Xiyu, J. Dawei, Design and analysis 
+of a flexible, elastic, and rope-driven parallel mechanism for wrist rehabilitation, 
+Appl. Bionics Biomech. 2020 (2020), https://doi.org/10.1155/2020/8841400. 
+Article ID 8841400, 13 pages. 
+[17] M. Eslami, A. Mokhtarian, M. Pirmoradian, et al., Design and fabrication of a 
+passive upper limb rehabilitation robot with adjustable automatic balance based on 
+variable mass of end-effector, J. Braz. Soc. Mech. Sci. Eng. 42 (2020) 629, https:// 
+doi.org/10.1007/s40430-020-02707-6. 
+[18] K.X. Khor, P.J.H. Chin, A.R. Hisyam, C.F. Yeong, A.L.T. Narayanan, E.L.M. Su, 
+Development of CR2-Haptic: a compact and portable rehabilitation robot for wrist 
+and forearm training, in: 2014 IEEE Conference on Biomedical Engineering and 
+Sciences(IECBES), 2014, pp. 424–429. 
+[19] J. Oblak, I. Cikajlo, Z. Matjaci c, Universal haptic drive: a robot for arm and wrist 
+rehabilitation, IEEE Trans. Neural Syst. Rehabil. Eng. 18 (3) (2010) 293–302. 
+[20] J. Lee, H. Kim, W. Yang, Development of wrist interface based on fully actuated 
+coaxial spherical parallel mechanism for force interaction, Sensors 21 (23) (2021). 
+[21] A. Gupta, M.K. O’Malley, V. Patoglu, C. Burgar, Design, control and performance of 
+Rice Wrist: a force feedback wrist exoskeleton for rehabilitation and training, Int. J. 
+Robot Res. 27 (2) (2008) 233–251. 
+[22] S.J. Spencer, J. Klein, K. Minakata, V. Le, J.E. Bobrow, D.J. Reinkensmeyer, A low 
+cost parallel robot and trajectory optimization method for wrist and forearm 
+rehabilitation using the Wii, in: 2ndIEEE/RAS-EMBS International Conference on 
+Biomedical Robotics and Biomechatronics (BioRob 2008), 2008, pp. 869–874. 
+[23] J.A. Martinez, P. Ng, S. Lu, M.S. Campagna, O. Celik, Design of Wrist Gimbal: a 
+forearm and wrist exoskeleton for stroke rehabilitation, IEEE 13th International 
+Conference on Rehabilitation Robotics (ICORR), Seattle, WA, United States, 2013, 
+pp. 1-6. 
+[24] M. Atlihan, E. Akdogan, M.S. Arslan. Development of a therapeutic exercise robot 
+for wrist and forearm rehabilitation, 19th International Conference on Methods 
+and Models in Automation and Robotics (MMAR), Miedzyzdroje, Poland, 2014, 
+pp. 52–57. 
+[25] N. Omarkulov, K. Telegenov, M. Zeinullin, I. Tursynbek, A. Shintemirov, 
+Preliminary mechanical design of NU-Wrist: a 3-DOF self-aligning Wrist 
+rehabilitation robot, 6th IEEE International Conference on Biomedical Robotics 
+and Biomechatronics (BioRob), Singapore, 2016, pp. 962-967. 
+[26] L. Luo, L. Peng, Z. Hou, W. Wang, Design and control of a 3-DOF rehabilitation 
+robot for forearm and wrist, in: 39th Annual International Conference of the IEEE 
+Engineering in Medicine and Biology Society (EMBC), Jeju, South Korea, 2017. 
+[27] K.E. Laver, B. Lange, S. George, J.E. Deutsch, G. Saposnik, M. Crotty, Virtual reality 
+for stroke rehabilitation, Stroke 49 (4) (2018). 
+[28] R. Teasell, N. Bayona, J. Bitensky, An evidence-based review of stroke 
+rehabilitation, Topic Stroke Rehab. 10 (1) (2003) 29–58. 
+[29] S. Almasi, H. Ahmadi, F. Asadi, L. Shahmoradi, G. Arji, M. Alizadeh, H. Kolivand, 
+Kinect-based rehabilitation systems for stroke patients: a scoping review, BioMed 
+Res. Int. 4339054 (2022) 1–16. 
+[30] M.J. Cano-Ma˜nas, S. Collado-V´azquez, J. Rodríguez Hern´andez, A.J. Mu˜noz 
+Villena, R. Cano-de-la-Cuerda, Effects of video-game based therapy on balance, 
+postural control, functionality, and quality of life of patients with subacute stroke: 
+a randomized controlled trial, J. Healthcare Eng. 5480315 (2020) 1–11. 
+[31] F. Corona, et al., Serious games for wrist rehabilitation in juvenile idiopathic 
+arthritis, 2018 IEEE Games, Entertainment, Media Conference (GEM), Galway, 
+Ireland (2018) 35–42. 
+C. Vo Duy                                                                                                                                                                                                                                        

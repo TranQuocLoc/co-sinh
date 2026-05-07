@@ -1,0 +1,34 @@
+{
+  "name": "balloon-adventure",
+  "version": "1.0.0",
+  "description": "Balloon Adventure - A retro pixel art game",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "author": "Game Rehab",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.gamerehab.balloonadventure",
+    "productName": "Balloon Adventure",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico"
+    },
+    "portable": {
+      "artifactName": "BalloonAdventure.exe"
+    },
+    "files": [
+      "**/*",
+      "!dist/**"
+    ]
+  }
+}
