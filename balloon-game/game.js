@@ -1,19 +1,17 @@
-// Game Constants - REDUCED SPEED FOR WRIST REHABILITATION
-const CANVAS_WIDTH = 400;
+// Game Constants
+const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 600;
-const BALLOON_WIDTH = 40;
-const BALLOON_HEIGHT = 55;
-const COIN_SIZE = 20;
-const GEM_SIZE = 25;
-const SPIKE_WIDTH = 60;
-const SPIKE_HEIGHT = 20;
+const BOAT_WIDTH = 30;
+const BOAT_HEIGHT = 50;
+const ROCK_RADIUS = 17.5; // Giảm 30% (từ 25 -> 17.5)
+const RIVER_WIDTH = 226; // Giảm 10% từ 252 -> 226
 
-// VERY SLOW SPEEDS for wrist rehabilitation
-const BALLOON_SPEED = 2.5;        // Very slow for gentle wrist movement
-const INITIAL_FALL_SPEED = 0.8;   // Slow falling objects
-const SPEED_INCREMENT = 0.00005;  // Very slow difficulty increase
-const MAX_FALL_SPEED = 2;         // Maximum speed cap
-const ENCODER_LIMIT = 300;        // Giới hạn encoder (ví dụ xoay cổ tay +/- 300)
+// Speeds for wrist rehabilitation
+const BOAT_SPEED = 2.25;
+let INITIAL_SCROLL_SPEED = 1.0;
+const SPEED_INCREMENT = 0.0001;
+let MAX_SCROLL_SPEED = 2.5;
+const ENCODER_LIMIT = 300;
 
 // Screen shake effect
 let screenShake = {
@@ -28,25 +26,39 @@ let screenShake = {
 let canvas, ctx;
 let gameRunning = false;
 let gamePaused = false;
+let currentLevel = 3;
 let score = 0;
 let lives = 3;
 let highScore = localStorage.getItem('balloonHighScore') || 0;
-let fallSpeed = INITIAL_FALL_SPEED;
+let scrollSpeed = INITIAL_SCROLL_SPEED;
+let worldY = 0; // Tracks total distance scrolled
+
+// Biomes configuration
+const BIOMES = [
+    { name: 'Jungle', ground: '#2E4015', decors: ['tree', 'bush'] },
+    { name: 'Desert', ground: '#D4AC0D', decors: ['cactus', 'dry_rock'] },
+    { name: 'Savanna', ground: '#A0935B', decors: ['dead_tree', 'bush'] },
+    { name: 'Temperate', ground: '#5C4033', decors: ['tree', 'dry_rock'] },
+    { name: 'Taiga', ground: '#273746', decors: ['pine_tree', 'dry_rock'] },
+    { name: 'Ice', ground: '#D6EAF8', decors: ['snow_tree', 'ice_rock'] }
+];
+const BIOME_LENGTH = 3000;
+const BIOME_BLEND = 500; // Khoảng cách (pixel) để pha màu giữa 2 biome
 
 // Game Objects
-let balloon = {
-    x: CANVAS_WIDTH / 2 - BALLOON_WIDTH / 2,
-    y: CANVAS_HEIGHT - 150,
-    width: BALLOON_WIDTH,
-    height: BALLOON_HEIGHT,
+let boat = {
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT - 120, // Fixed near bottom
+    width: BOAT_WIDTH,
+    height: BOAT_HEIGHT,
     velocityX: 0,
-    tilt: 0,           // Tilt angle for visual effect
-    targetTilt: 0      // Target tilt for smooth animation
+    tilt: 0,
+    targetTilt: 0
 };
 
-let coins = [];
-let gems = [];
-let spikes = [];
+let rocks = [];
+let particles = [];
+let decorations = [];
 
 // Input State
 let keys = { left: false, right: false, leftTicks: 0, rightTicks: 0 };
@@ -86,7 +98,7 @@ function togglePause() {
     if (!gamePaused) gameLoop();
 }
 
-function startGame() {
+function showLevelScreen() {
     const startBtn = document.getElementById('menuStartBtn');
     if (startBtn && startBtn.classList.contains('disabled')) {
         const goBack = confirm("⚠️ Chưa kết nối thiết bị và cài đặt khóa an toàn!\n\nNhấn OK để quay lại cài đặt.\nNhấn Bỏ qua (Cancel) để chơi thử không có thiết bị.");
@@ -95,12 +107,31 @@ function startGame() {
     }
 
     document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('levelScreen').classList.remove('hidden');
+}
+
+function backToMainMenu() {
+    document.getElementById('levelScreen').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
+}
+
+function startGameWithLevel(level) {
+    currentLevel = level;
+    document.getElementById('levelScreen').classList.add('hidden');
     document.getElementById('gameOverScreen').classList.add('hidden');
+
+    // Cấu hình theo Level
+    if (level === 1 || level === 2) {
+        INITIAL_SCROLL_SPEED = 0.9;
+        MAX_SCROLL_SPEED = 2.25;
+    } else {
+        INITIAL_SCROLL_SPEED = 1.0;
+        MAX_SCROLL_SPEED = 2.5;
+    }
+
     resetGame();
     gameRunning = true;
-    
-    // Bắt đầu thu thập dữ liệu đo góc tay bệnh nhân
-    // Cố gắng tìm/tạo bệnh nhân trong database trước
+
     const patientNameEl = document.getElementById('patientName');
     const patientName = patientNameEl ? patientNameEl.value.trim() : '';
     if (patientName && typeof fetch !== 'undefined') {
@@ -109,16 +140,16 @@ function startGame() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: patientName })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (typeof currentPatientId !== 'undefined') currentPatientId = data.id;
-            console.log(`👤 Bệnh nhân: ${data.name} (ID: ${data.id})${data.created ? ' - Mới tạo' : ' - Đã có'}`);
-        })
-        .catch(() => console.warn('⚠️ Không lưu được tên bệnh nhân - server chưa chạy'));
+            .then(r => r.json())
+            .then(data => {
+                if (typeof currentPatientId !== 'undefined') currentPatientId = data.id;
+                console.log(`👤 Bệnh nhân: ${data.name} (ID: ${data.id})${data.created ? ' - Mới tạo' : ' - Đã có'}`);
+            })
+            .catch(() => console.warn('⚠️ Không lưu được tên bệnh nhân - server chưa chạy'));
     }
-    
+
     if (typeof startTelemetry === 'function') startTelemetry();
-    
+
     gameLoop();
 }
 
@@ -126,23 +157,24 @@ function restartGame() {
     document.getElementById('gameOverScreen').classList.add('hidden');
     resetGame();
     gameRunning = true;
-    if (typeof startTelemetry === 'function') startTelemetry(); // Thêm dòng này
+    if (typeof startTelemetry === 'function') startTelemetry();
     gameLoop();
 }
 
 function resetGame() {
     score = 0;
     lives = 3;
-    fallSpeed = INITIAL_FALL_SPEED;
-    balloon.x = CANVAS_WIDTH / 2 - BALLOON_WIDTH / 2;
-    balloon.velocityX = 0;
-    balloon.tilt = 0;
-    balloon.targetTilt = 0;
+    scrollSpeed = INITIAL_SCROLL_SPEED;
+    worldY = -120; // Bắt đầu ở số âm để thuyền rơi đúng vào tâm khúc đầu tiên của dòng sông
+    boat.x = CANVAS_WIDTH / 2;
+    boat.velocityX = 0;
+    boat.tilt = 0;
+    boat.targetTilt = 0;
     keys.leftTicks = 0;
     keys.rightTicks = 0;
-    coins = [];
-    gems = [];
-    spikes = [];
+    rocks = [];
+    particles = [];
+    decorations = [];
     updateUI();
 }
 
@@ -165,106 +197,152 @@ function gameOver() {
 
     document.getElementById('finalScore').textContent = score;
     document.getElementById('gameOverScreen').classList.remove('hidden');
-    
-    // Lưu dữ liệu phiên tập lên Server (hoặc fallback ra CSV)
+
     if (typeof stopAndSaveSession === 'function') stopAndSaveSession();
 }
 
-// Ấn QUIT ở màn Pause → kết thúc ván, lưu dữ liệu, về menu chính
 function quitToMenu() {
     gamePaused = false;
-    document.getElementById('pauseScreen').classList.add('hidden'); // Ẩn màn Pause
+    document.getElementById('pauseScreen').classList.add('hidden');
     lives = 0;
     gameOver();
     document.getElementById('gameOverScreen').classList.add('hidden');
     resetToMainMenu();
 }
 
-// Ấn MAIN MENU ở màn Game Over
 function goToMainMenu() {
     document.getElementById('gameOverScreen').classList.add('hidden');
     resetToMainMenu();
 }
 
-// Reset màn menu về trạng thái sạch ban đầu
 function resetToMainMenu() {
     document.getElementById('startScreen').classList.remove('hidden');
-    // Ẩn lại cửa sổ cài đặt an toàn & nút cài đặt
     const safeBtn = document.getElementById('menuSafeSetupBtn');
     const safeMenu = document.getElementById('safetyMenu');
-    if (safeBtn)  safeBtn.style.display  = 'none';
+    if (safeBtn) safeBtn.style.display = 'none';
     if (safeMenu) safeMenu.style.display = 'none';
 }
 
-// Color palettes for colorful elements
-const COIN_COLORS = ['#FFD700', '#FFA500', '#FF6347', '#32CD32', '#00CED1', '#FF69B4'];
-const GEM_COLORS = ['#3498db', '#9b59b6', '#1abc9c', '#e74c3c', '#f39c12'];
-const BALLOON_COLOR = '#FF6B9D';  // Pink balloon
+// --- RIVER BOAT GAME LOGIC ---
 
-function spawnCoin() {
-    const color = COIN_COLORS[Math.floor(Math.random() * COIN_COLORS.length)];
-    coins.push({
-        x: Math.random() * (CANVAS_WIDTH - COIN_SIZE * 2) + COIN_SIZE,
-        y: -COIN_SIZE,
-        size: COIN_SIZE,
-        points: 10,
-        wobble: Math.random() * Math.PI * 2,
-        color: color
-    });
+function hexToRgb(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
 }
 
-function spawnGem() {
-    const color = GEM_COLORS[Math.floor(Math.random() * GEM_COLORS.length)];
-    gems.push({
-        x: Math.random() * (CANVAS_WIDTH - GEM_SIZE * 2) + GEM_SIZE,
-        y: -GEM_SIZE,
-        size: GEM_SIZE,
-        points: 50,
-        sparkle: 0,
-        color: color
-    });
+function blendColors(c1, c2, ratio) {
+    const c1Rgb = hexToRgb(c1);
+    const c2Rgb = hexToRgb(c2);
+    const r = Math.round(c1Rgb.r * (1 - ratio) + c2Rgb.r * ratio);
+    const g = Math.round(c1Rgb.g * (1 - ratio) + c2Rgb.g * ratio);
+    const b = Math.round(c1Rgb.b * (1 - ratio) + c2Rgb.b * ratio);
+    return `rgb(${r},${g},${b})`;
 }
 
-function spawnSpike() {
-    // Find a position that doesn't overlap with existing spikes
-    let newX;
-    let attempts = 0;
-    const maxAttempts = 10;
+function getBiomeAt(worldY) {
+    let currentIdx = Math.floor(worldY / BIOME_LENGTH) % BIOMES.length;
+    if (currentIdx < 0) currentIdx += BIOMES.length;
 
-    do {
-        newX = Math.random() * (CANVAS_WIDTH - SPIKE_WIDTH);
-        attempts++;
+    let nextIdx = (currentIdx + 1) % BIOMES.length;
 
-        // Check if this position overlaps with any existing spike near the top
-        const overlapping = spikes.some(spike => {
-            if (spike.y > 50) return false;  // Only check spikes near top
-            const distance = Math.abs(spike.x - newX);
-            return distance < SPIKE_WIDTH + 20;  // Minimum gap of 20px
-        });
+    let localY = worldY % BIOME_LENGTH;
+    if (localY < 0) localY += BIOME_LENGTH;
 
-        if (!overlapping) break;
-    } while (attempts < maxAttempts);
+    // Nếu ở đoạn giao thoa, blend màu nền đất
+    if (localY > BIOME_LENGTH - BIOME_BLEND) {
+        const ratio = (localY - (BIOME_LENGTH - BIOME_BLEND)) / BIOME_BLEND;
+        return {
+            name: BIOMES[nextIdx].name, // Vật thể ưu tiên mọc theo biome sắp tới
+            decors: BIOMES[nextIdx].decors,
+            groundColor: blendColors(BIOMES[currentIdx].ground, BIOMES[nextIdx].ground, ratio)
+        };
+    }
 
-    // Only spawn if we found a good position
-    if (attempts < maxAttempts) {
-        spikes.push({
-            x: newX,
-            y: -SPIKE_HEIGHT,
-            width: SPIKE_WIDTH,
-            height: SPIKE_HEIGHT,
-            type: 'bar'
+    return {
+        name: BIOMES[currentIdx].name,
+        decors: BIOMES[currentIdx].decors,
+        groundColor: BIOMES[currentIdx].ground
+    };
+}
+
+function getRiverCenterX(worldY) {
+    // Tăng biên độ và tần số thêm 20% để sông ngoằn ngoèo hơn
+    const wave1 = Math.sin(worldY * 0.0066) * 105;
+    const wave2 = Math.sin(worldY * 0.0026) * 60;
+    return CANVAS_WIDTH / 2 + wave1 + wave2;
+}
+
+function spawnRock() {
+    if (currentLevel === 1) return; // Không có đá
+
+    // Giảm lượng đá đi 20% với level 2 (0.04), level 3 giảm 10% (0.045)
+    const spawnChance = currentLevel === 2 ? 0.04 : 0.045;
+    if (Math.random() > spawnChance) return;
+
+    const spawnWorldY = worldY + CANVAS_HEIGHT + 100;
+
+    const tooClose = rocks.some(r => Math.abs(r.worldY - spawnWorldY) < 150);
+    if (!tooClose) {
+        const centerX = getRiverCenterX(spawnWorldY);
+        // Xuất hiện trong khoảng từ bờ trái đến bờ phải sông (trừ đi biên)
+        const maxOffset = RIVER_WIDTH / 2 - ROCK_RADIUS * 1.5;
+        const xOffset = (Math.random() * 2 - 1) * maxOffset;
+
+        // Tạo hình dáng đa giác ngẫu nhiên cho viên đá
+        const points = [];
+        const numPoints = 6 + Math.floor(Math.random() * 4); // Từ 6 đến 9 điểm
+        for (let i = 0; i < numPoints; i++) {
+            const angle = (Math.PI * 2 / numPoints) * i;
+            const r = ROCK_RADIUS * (0.6 + Math.random() * 0.5); // Bán kính lồi lõm
+            points.push({ x: r * Math.cos(angle), y: r * Math.sin(angle) });
+        }
+
+        const biome = getBiomeAt(spawnWorldY);
+        const isIce = biome.name === 'Ice';
+
+        rocks.push({
+            x: centerX + xOffset,
+            worldY: spawnWorldY,
+            size: ROCK_RADIUS,
+            points: points,
+            isIce: isIce
         });
     }
 }
 
-// Trigger screen shake effect
+function spawnDecoration() {
+    if (Math.random() > 0.1) return; // Tần suất cây cối 2 bên bờ
+
+    const spawnWorldY = worldY + CANVAS_HEIGHT + 100;
+    const biome = getBiomeAt(spawnWorldY);
+
+    const centerX = getRiverCenterX(spawnWorldY);
+    const isLeft = Math.random() > 0.5;
+
+    // Nằm cách bờ sông một khoảng ngẫu nhiên
+    const offsetFromCenter = RIVER_WIDTH / 2 + 30 + Math.random() * 80;
+    const x = isLeft ? centerX - offsetFromCenter : centerX + offsetFromCenter;
+
+    const type = biome.decors[Math.floor(Math.random() * biome.decors.length)];
+
+    decorations.push({
+        x: x,
+        worldY: spawnWorldY,
+        type: type,
+        size: 20 + Math.random() * 20
+    });
+}
+
 function triggerScreenShake(intensity = 8, duration = 15) {
     screenShake.active = true;
     screenShake.intensity = intensity;
     screenShake.duration = duration;
 }
 
-// Update screen shake
 function updateScreenShake() {
     if (screenShake.active) {
         screenShake.duration--;
@@ -275,117 +353,130 @@ function updateScreenShake() {
         } else {
             screenShake.offsetX = (Math.random() - 0.5) * screenShake.intensity;
             screenShake.offsetY = (Math.random() - 0.5) * screenShake.intensity;
-            // Reduce intensity over time
             screenShake.intensity *= 0.9;
         }
     }
 }
 
 function update() {
-    // Update balloon position (Keyboard fallback + Hardware Absolute Position)
+    // LƯU Ý: Phần lấy góc hardwareValue và gán tỷ lệ sang toạ độ X được giữ nguyên chuẩn xác!
     if (keys.left) {
-        balloon.velocityX = -BALLOON_SPEED;
-        balloon.targetTilt = -0.25;
+        boat.velocityX = -BOAT_SPEED;
+        boat.targetTilt = -0.3;
     } else if (keys.right) {
-        balloon.velocityX = BALLOON_SPEED;
-        balloon.targetTilt = 0.25;
-    } else if (port) {
-        // DIỀU KHIỂN THEO TỌA ĐỘ TUYỆT ĐỐI (ABSOLUTE POSITIONING)
-        // Ánh xạ masterValue (góc tay thật) từ dải [calibMin, calibMax] sang [0, CANVAS_WIDTH]
+        boat.velocityX = BOAT_SPEED;
+        boat.targetTilt = 0.3;
+    } else if (typeof port !== 'undefined' && port) {
+        let range = (typeof calibMax !== 'undefined' ? calibMax : 100) - (typeof calibMin !== 'undefined' ? calibMin : -100);
+        if (range === 0) range = 1;
 
-        // calibMin và calibMax được lấy từ serial.js (localStorage) thông qua biến toàn cục
-        let range = calibMax - calibMin;
-        if (range === 0) range = 1; // Tránh chia cho 0
-
-        // Tính tỷ lệ (clamped giữa 0 và 1)
-        let ratio = (masterValue - calibMin) / range;
+        let ratio = ((typeof masterValue !== 'undefined' ? masterValue : 0) - (typeof calibMin !== 'undefined' ? calibMin : -100)) / range;
         ratio = Math.max(0, Math.min(1, ratio));
 
-        // Tính vị trí đích
-        const targetX = ratio * (CANVAS_WIDTH - balloon.width);
+        const targetX = ratio * CANVAS_WIDTH;
+        const ease = 0.135;
+        const lastX = boat.x;
+        boat.x += (targetX - boat.x) * ease;
 
-        // Di chuyển mượt tới vị trí đích (easing)
-        const ease = 0.15;
-        const lastX = balloon.x;
-        balloon.x += (targetX - balloon.x) * ease;
-
-        // Tính toán velocity và tilt dựa trên dịch chuyển thực tế
-        balloon.velocityX = balloon.x - lastX;
-        balloon.targetTilt = Math.max(-0.3, Math.min(0.3, balloon.velocityX * 0.2));
+        boat.velocityX = boat.x - lastX;
+        boat.targetTilt = Math.max(-0.4, Math.min(0.4, boat.velocityX * 0.135));
     } else {
-        balloon.velocityX *= 0.9;
-        balloon.targetTilt = 0;
+        boat.velocityX = 0;
+        boat.targetTilt = 0;
     }
 
-    // Cập nhật vị trí X cho cả Keyboard và Encoder
-    balloon.x += balloon.velocityX;
-    // Smooth tilt animation
-    balloon.tilt += (balloon.targetTilt - balloon.tilt) * 0.15;
+    if (!(typeof port !== 'undefined' && port)) {
+        boat.x += boat.velocityX;
+    }
 
-    // Keep balloon in bounds
-    if (balloon.x < 0) balloon.x = 0;
-    if (balloon.x > CANVAS_WIDTH - balloon.width) balloon.x = CANVAS_WIDTH - balloon.width;
+    boat.tilt += (boat.targetTilt - boat.tilt) * 0.135;
 
-    // Increase difficulty (slower)
-    fallSpeed = Math.min(MAX_FALL_SPEED, fallSpeed + SPEED_INCREMENT);
+    // Bounds check
+    if (boat.x < 0) boat.x = 0;
+    if (boat.x > CANVAS_WIDTH) boat.x = CANVAS_WIDTH;
 
-    // Spawn objects (less frequently for easier gameplay)
-    if (Math.random() < 0.010) spawnCoin();   // Reduced coin frequency
-    if (Math.random() < 0.003) spawnGem();    // Reduced gem frequency
-    if (Math.random() < 0.004) spawnSpike();  // Reduced spike frequency
+    // Scroll world
+    worldY += scrollSpeed;
+    scrollSpeed = Math.min(MAX_SCROLL_SPEED, scrollSpeed + SPEED_INCREMENT);
 
-    // Update coins with wobble effect
-    coins = coins.filter((coin) => {
-        coin.y += fallSpeed;
-        coin.wobble += 0.05;
+    if (Math.floor(worldY / 100) > score) {
+        score = Math.floor(worldY / 100);
+        updateUI();
+    }
 
-        if (checkCollision(balloon, { x: coin.x - coin.size / 2, y: coin.y - coin.size / 2, width: coin.size, height: coin.size })) {
-            score += coin.points;
-            updateUI();
-            return false;
-        }
+    spawnRock();
+    spawnDecoration();
 
-        return coin.y <= CANVAS_HEIGHT + coin.size;
+    const boatHitbox = {
+        x: boat.x - boat.width / 2,
+        y: boat.y - boat.height / 2,
+        width: boat.width,
+        height: boat.height
+    };
+
+    // Bank collision (Chạm mép sông)
+    const riverCenterAtBoat = getRiverCenterX(worldY + (CANVAS_HEIGHT - boat.y));
+    if (Math.abs(boat.x - riverCenterAtBoat) > RIVER_WIDTH / 2 - boat.width / 2) {
+        hitObstacle();
+    }
+
+    // Cập nhật và Xóa Trang trí
+    decorations = decorations.filter(dec => {
+        const screenY = CANVAS_HEIGHT - (dec.worldY - worldY);
+        return screenY <= CANVAS_HEIGHT + dec.size * 2;
     });
 
-    // Update gems with sparkle effect
-    gems = gems.filter((gem) => {
-        gem.y += fallSpeed * 0.7;
-        gem.sparkle += 0.1;
+    // Cập nhật và Va chạm Đá ngầm
+    rocks = rocks.filter(rock => {
+        const screenY = CANVAS_HEIGHT - (rock.worldY - worldY);
 
-        if (checkCollision(balloon, { x: gem.x - gem.size / 2, y: gem.y - gem.size / 2, width: gem.size, height: gem.size })) {
-            score += gem.points;
-            updateUI();
-            return false;
-        }
-
-        return gem.y <= CANVAS_HEIGHT + gem.size;
-    });
-
-    // Update spikes
-    spikes = spikes.filter((spike) => {
-        spike.y += fallSpeed;
-
-        const spikeHitbox = {
-            x: spike.x + 8,
-            y: spike.y + 5,
-            width: spike.width - 16,
-            height: spike.height - 8
+        const rockHitbox = {
+            x: rock.x - rock.size * 0.8,
+            y: screenY - rock.size * 0.8,
+            width: rock.size * 1.6,
+            height: rock.size * 1.6
         };
 
-        if (checkCollision(balloon, spikeHitbox)) {
-            lives--;
-            updateUI();
-            triggerScreenShake(10, 20);  // Trigger shake on hit!
-
-            if (lives <= 0) {
-                gameOver();
-            }
+        if (checkCollision(boatHitbox, rockHitbox)) {
+            hitObstacle();
             return false;
         }
 
-        return spike.y <= CANVAS_HEIGHT + spike.height;
+        return screenY <= CANVAS_HEIGHT + rock.size * 2;
     });
+
+    // Bọt nước thuyền
+    if (Math.abs(boat.velocityX) > 0.5 || scrollSpeed > 0) {
+        particles.push({
+            x: boat.x + (Math.random() * 10 - 5),
+            y: boat.y + boat.height / 2,
+            life: 1.0,
+            vx: -boat.velocityX * 0.2 + (Math.random() * 0.5 - 0.25),
+            vy: scrollSpeed * 0.5 + Math.random() * 2
+        });
+    }
+
+    particles = particles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.02;
+        return p.life > 0;
+    });
+}
+
+function hitObstacle() {
+    lives--;
+    updateUI();
+    triggerScreenShake(15, 20);
+
+    // Đẩy thuyền ra xa rìa nếu chạm bờ
+    const riverCenterAtBoat = getRiverCenterX(worldY + (CANVAS_HEIGHT - boat.y));
+    boat.x += (riverCenterAtBoat - boat.x) * 0.5;
+    boat.velocityX = 0;
+
+    if (lives <= 0) {
+        gameOver();
+    }
 }
 
 function checkCollision(rect1, rect2) {
@@ -396,246 +487,247 @@ function checkCollision(rect1, rect2) {
 }
 
 function draw() {
-    // Update screen shake
     updateScreenShake();
 
-    // Apply screen shake offset
     ctx.save();
     ctx.translate(screenShake.offsetX, screenShake.offsetY);
 
-    // Clear canvas with light gradient background
-    const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    gradient.addColorStop(0, '#E8F4F8');   // Light sky blue
-    gradient.addColorStop(0.5, '#D4EBF2'); // Soft blue
-    gradient.addColorStop(1, '#C5E3ED');   // Lighter blue
-    ctx.fillStyle = gradient;
-    ctx.fillRect(-10, -10, CANVAS_WIDTH + 20, CANVAS_HEIGHT + 20);
+    // 1. Vẽ Đất Nền (Ground) cuộn dần theo chiều dọc
+    // Vẽ từng dải ngang cao 10px để cập nhật màu theo từng toạ độ worldY cụ thể
+    for (let y = -10; y <= CANVAS_HEIGHT + 10; y += 10) {
+        const wy = worldY + (CANVAS_HEIGHT - y);
+        const biome = getBiomeAt(wy);
+        ctx.fillStyle = biome.groundColor;
+        ctx.fillRect(-10, y, CANVAS_WIDTH + 20, 10);
+    }
 
-    // Draw some decorative clouds
-    drawClouds();
+    // 2. Vẽ Sông
+    ctx.beginPath();
+    for (let y = -10; y <= CANVAS_HEIGHT + 10; y += 10) {
+        const wy = worldY + (CANVAS_HEIGHT - y);
+        const cx = getRiverCenterX(wy);
+        if (y === -10) ctx.moveTo(cx - RIVER_WIDTH / 2, y);
+        else ctx.lineTo(cx - RIVER_WIDTH / 2, y);
+    }
+    for (let y = CANVAS_HEIGHT + 10; y >= -10; y -= 10) {
+        const wy = worldY + (CANVAS_HEIGHT - y);
+        const cx = getRiverCenterX(wy);
+        ctx.lineTo(cx + RIVER_WIDTH / 2, y);
+    }
+    ctx.closePath();
 
-    // Draw coins with wobble
-    coins.forEach(coin => {
-        const wobbleX = Math.sin(coin.wobble) * 2;
-        drawPixelCoin(coin.x + wobbleX, coin.y, coin.size, coin.color);
+    const riverGradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, 0);
+    riverGradient.addColorStop(0, '#1E5A7A');
+    riverGradient.addColorStop(0.3, '#2A82A5');
+    riverGradient.addColorStop(0.5, '#40A4C7');
+    riverGradient.addColorStop(0.7, '#2A82A5');
+    riverGradient.addColorStop(1, '#1E5A7A');
+
+    ctx.fillStyle = riverGradient;
+    ctx.fill();
+
+    ctx.strokeStyle = '#85C1D9'; // Viền nước cạn trắng xanh
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // 3. Vẽ Đồ Trang trí (Cây, Xương rồng...)
+    decorations.forEach(dec => {
+        const screenY = CANVAS_HEIGHT - (dec.worldY - worldY);
+        drawDecoration(dec.x, screenY, dec.size, dec.type);
     });
 
-    // Draw gems with sparkle
-    gems.forEach(gem => {
-        drawPixelGem(gem.x, gem.y, gem.size, gem.sparkle, gem.color);
+    // 4. Vẽ Đá Ngầm
+    rocks.forEach(rock => {
+        const screenY = CANVAS_HEIGHT - (rock.worldY - worldY);
+        drawRock(rock.x, screenY, rock.points, rock.isIce);
     });
 
-    // Draw spikes
-    spikes.forEach(spike => {
-        drawPixelSpikes(spike.x, spike.y, spike.width, spike.height);
+    // 5. Bọt nước
+    particles.forEach(p => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.life * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3 + p.life * 2, 0, Math.PI * 2);
+        ctx.fill();
     });
 
-    // Draw balloon with tilt effect
-    drawPixelBalloon();
+    // 6. Thuyền
+    drawBoat();
 
-    // Restore context after shake
     ctx.restore();
 }
 
-function drawClouds() {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    // Simple cloud shapes
-    const clouds = [
-        { x: 50, y: 80 },
-        { x: 200, y: 150 },
-        { x: 320, y: 60 },
-        { x: 100, y: 300 },
-        { x: 280, y: 400 }
-    ];
-
-    clouds.forEach(cloud => {
-        ctx.beginPath();
-        ctx.arc(cloud.x, cloud.y, 20, 0, Math.PI * 2);
-        ctx.arc(cloud.x + 25, cloud.y - 5, 15, 0, Math.PI * 2);
-        ctx.arc(cloud.x + 45, cloud.y, 18, 0, Math.PI * 2);
-        ctx.fill();
-    });
-}
-
-function drawPixelCoin(x, y, size, color) {
-    const s = size / 2;
-
-    // Filled colored circle
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, s, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Border
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Inner shine
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.beginPath();
-    ctx.arc(x - s * 0.25, y - s * 0.25, s * 0.35, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-function drawPixelGem(x, y, size, sparkle, color) {
-    ctx.fillStyle = color || '#3498db';
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-
-    // Diamond shape
-    ctx.beginPath();
-    ctx.moveTo(x, y - size / 2);
-    ctx.lineTo(x + size / 2, y);
-    ctx.lineTo(x, y + size / 2);
-    ctx.lineTo(x - size / 2, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Animated shine
-    const shineAlpha = 0.4 + Math.sin(sparkle) * 0.3;
-    ctx.fillStyle = `rgba(255, 255, 255, ${shineAlpha})`;
-    ctx.beginPath();
-    ctx.moveTo(x - size / 6, y - size / 4);
-    ctx.lineTo(x, y - size / 6);
-    ctx.lineTo(x - size / 6, y);
-    ctx.closePath();
-    ctx.fill();
-}
-
-function drawPixelSpikes(x, y, width, height) {
-    ctx.fillStyle = '#333';
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-
-    const spikeCount = 6;
-    const spikeWidth = width / spikeCount;
-
-    // Top bar
-    ctx.fillRect(x, y, width, 5);
-
-    // Spikes pointing down
-    for (let i = 0; i < spikeCount; i++) {
-        ctx.beginPath();
-        ctx.moveTo(x + i * spikeWidth, y + 5);
-        ctx.lineTo(x + i * spikeWidth + spikeWidth / 2, y + height);
-        ctx.lineTo(x + (i + 1) * spikeWidth, y + 5);
-        ctx.closePath();
-        ctx.fill();
-    }
-}
-
-function drawPixelBalloon() {
-    const centerX = balloon.x + balloon.width / 2;
-    const centerY = balloon.y + balloon.height / 2;
-
+function drawRock(cx, cy, points, isIce = false) {
     ctx.save();
+    ctx.translate(cx, cy);
 
-    // Apply tilt transformation
-    ctx.translate(centerX, centerY);
-    ctx.rotate(balloon.tilt);
-    ctx.translate(-centerX, -centerY);
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
 
-    const x = balloon.x + balloon.width / 2;
-    const y = balloon.y;
+    // Màu đá tùy thuộc là băng hay đá thường
+    ctx.fillStyle = isIce ? '#AED6F1' : '#5D6D7E';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = isIce ? '#5DADE2' : '#273746';
+    ctx.stroke();
 
-    // Rainbow color cycling balloon
-    const time = Date.now() / 1000;
-    const hue = (time * 30) % 360;  // Slowly cycling hue
-    const color1 = `hsl(${hue}, 80%, 75%)`;
-    const color2 = `hsl(${hue}, 70%, 55%)`;
-    const color3 = `hsl(${hue}, 60%, 40%)`;
+    // Khắc các đường nứt/highlight bên trong đá
+    ctx.beginPath();
+    ctx.moveTo(points[0].x * 0.5, points[0].y * 0.5);
+    ctx.lineTo(points[2].x * 0.6, points[2].y * 0.6);
+    ctx.strokeStyle = isIce ? '#EBF5FB' : '#85929E';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-    const balloonGradient = ctx.createRadialGradient(x - 5, y + 10, 2, x, y + 20, 22);
-    balloonGradient.addColorStop(0, color1);   // Light
-    balloonGradient.addColorStop(0.5, color2); // Medium
-    balloonGradient.addColorStop(1, color3);   // Dark
+    ctx.restore();
+}
 
-    ctx.fillStyle = balloonGradient;
-    ctx.strokeStyle = `hsl(${hue}, 50%, 30%)`;
+function drawDecoration(cx, cy, size, type) {
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    if (type === 'tree') {
+        // Thân cây
+        ctx.fillStyle = '#6E2C00';
+        ctx.fillRect(-size / 4, 0, size / 2, size);
+        // Tán lá
+        ctx.fillStyle = '#1E8449';
+        ctx.beginPath();
+        ctx.arc(0, -size / 2, size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#117A65';
+        ctx.beginPath();
+        ctx.arc(-size / 2, -size / 4, size * 0.8, 0, Math.PI * 2);
+        ctx.arc(size / 2, -size / 4, size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (type === 'pine_tree') {
+        // Thân cây
+        ctx.fillStyle = '#4A2311';
+        ctx.fillRect(-size / 4, 0, size / 2, size);
+        // Tán lá nhọn
+        ctx.fillStyle = '#145A32';
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 1.5);
+        ctx.lineTo(size * 0.8, 0);
+        ctx.lineTo(-size * 0.8, 0);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 2);
+        ctx.lineTo(size * 0.6, -size * 0.5);
+        ctx.lineTo(-size * 0.6, -size * 0.5);
+        ctx.fill();
+    } else if (type === 'snow_tree') {
+        ctx.fillStyle = '#4A2311';
+        ctx.fillRect(-size / 4, 0, size / 2, size);
+        // Tán lá tuyết
+        ctx.fillStyle = '#D6EAF8';
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 1.5);
+        ctx.lineTo(size * 0.8, 0);
+        ctx.lineTo(-size * 0.8, 0);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 2);
+        ctx.lineTo(size * 0.6, -size * 0.5);
+        ctx.lineTo(-size * 0.6, -size * 0.5);
+        ctx.fill();
+    } else if (type === 'cactus') {
+        ctx.fillStyle = '#229954';
+        ctx.fillRect(-size / 4, -size, size / 2, size * 2);
+        ctx.fillRect(-size, -size / 4, size * 0.8, size / 3);
+        ctx.fillRect(size / 4, -size * 0.6, size * 0.8, size / 3);
+        ctx.fillRect(-size, -size / 2, size / 3, size / 2);
+        ctx.fillRect(size, -size * 0.8, size / 3, size / 2);
+    } else if (type === 'bush') {
+        ctx.fillStyle = '#7D6608';
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
+        ctx.arc(-size / 2, size / 4, size * 0.6, 0, Math.PI * 2);
+        ctx.arc(size / 2, size / 4, size * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (type === 'dry_rock') {
+        ctx.fillStyle = '#A04000';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size, size / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#6E2C00';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } else if (type === 'ice_rock') {
+        ctx.fillStyle = '#AED6F1';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size, size / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2874A6';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } else if (type === 'dead_tree') {
+        ctx.strokeStyle = '#4A2311';
+        ctx.lineWidth = size / 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, size);
+        ctx.lineTo(0, -size / 2);
+        ctx.lineTo(-size / 2, -size);
+        ctx.moveTo(0, -size / 4);
+        ctx.lineTo(size / 2, -size * 0.8);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+function drawBoat() {
+    ctx.save();
+    ctx.translate(boat.x, boat.y);
+    ctx.rotate(boat.tilt);
+
+    ctx.fillStyle = '#7B241C';
+    ctx.strokeStyle = '#4A2311';
     ctx.lineWidth = 2;
 
-    // Balloon body (oval) - FILLED
     ctx.beginPath();
-    ctx.ellipse(x, y + 18, 18, 22, 0, 0, Math.PI * 2);
+    ctx.moveTo(-boat.width / 2, -boat.height / 2 + 10);
+    ctx.lineTo(boat.width / 2, -boat.height / 2 + 10);
+    ctx.lineTo(boat.width / 2 - 5, boat.height / 2);
+    ctx.lineTo(-boat.width / 2 + 5, boat.height / 2);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Balloon stripes (curved lines)
     ctx.beginPath();
-    ctx.moveTo(x - 12, y + 10);
-    ctx.quadraticCurveTo(x - 15, y + 25, x - 8, y + 38);
+    ctx.moveTo(-boat.width / 2 + 2, 0);
+    ctx.lineTo(boat.width / 2 - 2, 0);
+    ctx.moveTo(-boat.width / 2 + 4, boat.height / 4);
+    ctx.lineTo(boat.width / 2 - 4, boat.height / 4);
+    ctx.strokeStyle = '#641E16';
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(x + 12, y + 10);
-    ctx.quadraticCurveTo(x + 15, y + 25, x + 8, y + 38);
+    ctx.moveTo(-boat.width / 2, -boat.height / 2 + 10);
+    ctx.lineTo(boat.width / 2, -boat.height / 2 + 10);
+    ctx.lineTo(0, -boat.height / 2 - 10);
+    ctx.closePath();
+    ctx.fillStyle = '#922B21';
+    ctx.fill();
     ctx.stroke();
 
-    // Center stripe
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y + 38);
-    ctx.stroke();
-
-    // Balloon knot
-    ctx.beginPath();
-    ctx.moveTo(x - 4, y + 40);
-    ctx.lineTo(x, y + 45);
-    ctx.lineTo(x + 4, y + 40);
-    ctx.stroke();
-
-    // String with slight wave
-    const stringWave = Math.sin(Date.now() / 300) * 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 45);
-    ctx.quadraticCurveTo(x + stringWave, y + 47, x, y + 50);
-    ctx.stroke();
-
-    // Basket ropes
-    ctx.beginPath();
-    ctx.moveTo(x - 10, y + 50);
-    ctx.lineTo(x, y + 50);
-    ctx.lineTo(x + 10, y + 50);
-    ctx.stroke();
+    ctx.fillStyle = '#935116';
+    ctx.fillRect(-2, -boat.height / 2, 4, boat.height - 10);
+    ctx.strokeRect(-2, -boat.height / 2, 4, boat.height - 10);
 
     ctx.beginPath();
-    ctx.moveTo(x - 10, y + 50);
-    ctx.lineTo(x - 12, y + 55);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + 10, y + 50);
-    ctx.lineTo(x + 12, y + 55);
-    ctx.stroke();
-
-    // Basket
-    ctx.fillStyle = '#333';
-    ctx.fillRect(x - 12, y + 55, 24, 10);
-
-    // Basket pattern
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x - 12, y + 58);
-    ctx.lineTo(x + 12, y + 58);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x - 12, y + 62);
-    ctx.lineTo(x + 12, y + 62);
-    ctx.stroke();
-
-    // Vertical lines
-    ctx.beginPath();
-    ctx.moveTo(x - 4, y + 55);
-    ctx.lineTo(x - 4, y + 65);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + 55);
-    ctx.lineTo(x + 4, y + 65);
+    ctx.moveTo(2, -boat.height / 2 + 5);
+    ctx.lineTo(boat.width + 10, -5);
+    ctx.lineTo(2, 5);
+    ctx.closePath();
+    ctx.fillStyle = '#FDFEFE';
+    ctx.fill();
+    ctx.strokeStyle = '#D0D3D4';
     ctx.stroke();
 
     ctx.restore();

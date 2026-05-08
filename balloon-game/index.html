@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎈 Balloon Adventure</title>
+    <title>⛵ River Boat Adventure</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -27,16 +27,17 @@
 
         <div class="game-overlay" id="startScreen">
             <div class="overlay-content">
-                <h1>🎈 BALLOON</h1>
+                <h1>⛵ RIVER BOAT</h1>
                 <h2>ADVENTURE</h2>
                 <div class="instructions">
                     <p>← → or A D to move</p>
-                    <p>⬡ Collect coins & gems</p>
-                    <p>▼ Avoid spikes!</p>
+                    <p>⬡ Avoid Rocks</p>
+                    <p>▼ Sail down the river!</p>
                 </div>
-                
-                <button class="pixel-btn-small" id="menuSafeSetupBtn" onclick="beginSafetySetup()" style="margin-bottom: 20px; display: none;">⚙️ 2. BẮT ĐẦU CÀI ĐẶT AN TOÀN</button>
-                
+
+                <button class="pixel-btn-small" id="menuSafeSetupBtn" onclick="beginSafetySetup()"
+                    style="margin-bottom: 20px; display: none;">⚙️ 2. BẮT ĐẦU CÀI ĐẶT AN TOÀN</button>
+
                 <div class="safety-menu" id="safetyMenu" style="display: none;">
                     <h3>⚙️ NHẬP LỆNH GIỚI HẠN</h3>
                     <div class="input-group">
@@ -47,14 +48,17 @@
                         <label>Góc Phải Cực Đại (Dương °): </label>
                         <input type="number" id="limitRight" value="30" min="0" max="30">
                     </div>
-                    <button class="pixel-btn-small" onclick="confirmSafetyAndTest()" style="margin-top: 15px; width: 100%; background: #e74c3c;">XÁC NHẬN & CHẠY TEST</button>
+                    <button class="pixel-btn-small" onclick="confirmSafetyAndTest()"
+                        style="margin-top: 15px; width: 100%; background: #e74c3c;">XÁC NHẬN & CHẠY TEST</button>
                 </div>
 
                 <div class="menu-actions">
-                    <button class="pixel-btn-small" id="menuConnectBtn" onclick="initSerial()">1. KẾT NỐI MẠCH REHAB</button>
+                    <button class="pixel-btn-small" id="menuConnectBtn" onclick="initSerial()">1. KẾT NỐI MẠCH
+                        REHAB</button>
                 </div>
 
-                <div class="safety-menu" style="margin-top: 16px; background: #fff9f0; padding: 10px 15px; border-color: #f5a623;">
+                <div class="safety-menu"
+                    style="margin-top: 16px; background: #fff9f0; padding: 10px 15px; border-color: #f5a623;">
                     <h3 style="color: #f5a623;">&#129298; THÔNG TIN BỆNH NHÂN</h3>
                     <div class="input-group">
                         <label>Tên Bệnh Nhân: </label>
@@ -62,7 +66,23 @@
                     </div>
                 </div>
 
-                <button class="pixel-btn disabled" id="menuStartBtn" onclick="startGame()">▶ 3. CHƠI GAME</button>
+                <button class="pixel-btn disabled" id="menuStartBtn" onclick="showLevelScreen()">▶ 3. CHƠI GAME</button>
+            </div>
+        </div>
+
+        <div class="game-overlay hidden" id="levelScreen">
+            <div class="overlay-content">
+                <h2>CHỌN ĐỘ KHÓ</h2>
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                    <button class="pixel-btn" style="background-color: #27AE60;" onclick="startGameWithLevel(1)">LEVEL 1
+                        (Dễ nhất - Không đá)</button>
+                    <button class="pixel-btn" style="background-color: #F39C12;" onclick="startGameWithLevel(2)">LEVEL 2
+                        (Trung bình - Ít đá)</button>
+                    <button class="pixel-btn" style="background-color: #C0392B;" onclick="startGameWithLevel(3)">LEVEL 3
+                        (Khó - Nhanh, nhiều đá)</button>
+                </div>
+                <button class="pixel-btn-small" style="margin-top: 20px; background-color: #7F8C8D;"
+                    onclick="backToMainMenu()">Quay Lại</button>
             </div>
         </div>
 
@@ -80,7 +100,8 @@
                 <p class="final-score">SCORE: <span id="finalScore">0</span></p>
                 <p class="new-record hidden" id="newHighScore">★ NEW RECORD! ★</p>
                 <button class="pixel-btn" onclick="restartGame()">RETRY</button>
-                <button class="pixel-btn" onclick="goToMainMenu()" style="margin-top:10px; background:#555;">MAIN MENU</button>
+                <button class="pixel-btn" onclick="goToMainMenu()" style="margin-top:10px; background:#555;">MAIN
+                    MENU</button>
             </div>
         </div>
 
