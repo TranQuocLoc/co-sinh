@@ -268,7 +268,6 @@ function getBiomeAt(worldY) {
         groundColor: BIOMES[currentIdx].ground
     };
 }
-
 function getRiverCenterX(worldY) {
     // Tăng biên độ và tần số thêm 20% để sông ngoằn ngoèo hơn
     const wave1 = Math.sin(worldY * 0.0066) * 105;
@@ -276,20 +275,40 @@ function getRiverCenterX(worldY) {
     return CANVAS_WIDTH / 2 + wave1 + wave2;
 }
 
+function getRiverWidth(wy) {
+    const targetWidth = 226; // Độ rộng hiện tại của bạn
+    const startWidth = targetWidth * 2; // 200% độ rộng
+    const transitionDistance = CANVAS_HEIGHT / 2; // 300px (nửa màn hình)
+
+    if (wy <= 0) return startWidth;
+    if (wy >= transitionDistance) return targetWidth;
+
+    // Tính toán thu hẹp dần (Linear interpolation)
+    const ratio = wy / transitionDistance;
+    return startWidth + (targetWidth - startWidth) * ratio;
+}
+
+
 function spawnRock() {
     if (currentLevel === 1) return; // Không có đá
+
+    const spawnWorldY = worldY + CANVAS_HEIGHT + 100;
+
+    // THÊM DÒNG NÀY: Không sinh đá trong khoảng nửa màn hình đầu tiên
+    if (spawnWorldY < CANVAS_HEIGHT / 2) return;
 
     // Giảm lượng đá đi 20% với level 2 (0.04), level 3 giảm 10% (0.045)
     const spawnChance = currentLevel === 2 ? 0.04 : 0.045;
     if (Math.random() > spawnChance) return;
 
-    const spawnWorldY = worldY + CANVAS_HEIGHT + 100;
-
     const tooClose = rocks.some(r => Math.abs(r.worldY - spawnWorldY) < 150);
     if (!tooClose) {
         const centerX = getRiverCenterX(spawnWorldY);
-        // Xuất hiện trong khoảng từ bờ trái đến bờ phải sông (trừ đi biên)
-        const maxOffset = RIVER_WIDTH / 2 - ROCK_RADIUS * 1.5;
+
+        // SỬA DÒNG NÀY: Dùng hàm getRiverWidth thay cho hằng số
+        const currentRiverWidth = getRiverWidth(spawnWorldY);
+        const maxOffset = currentRiverWidth / 2 - ROCK_RADIUS * 1.5;
+
         const xOffset = (Math.random() * 2 - 1) * maxOffset;
 
         // Tạo hình dáng đa giác ngẫu nhiên cho viên đá
@@ -415,8 +434,13 @@ function update() {
     };
 
     // Bank collision (Chạm mép sông)
-    const riverCenterAtBoat = getRiverCenterX(worldY + (CANVAS_HEIGHT - boat.y));
-    if (Math.abs(boat.x - riverCenterAtBoat) > RIVER_WIDTH / 2 - boat.width / 2) {
+    const boatWorldY = worldY + (CANVAS_HEIGHT - boat.y);
+    const riverCenterAtBoat = getRiverCenterX(boatWorldY);
+
+    // SỬA DÒNG NÀY: Dùng hàm getRiverWidth thay cho hằng số
+    const currentRiverWidth = getRiverWidth(boatWorldY);
+
+    if (Math.abs(boat.x - riverCenterAtBoat) > currentRiverWidth / 2 - boat.width / 2) {
         hitObstacle();
     }
 
@@ -506,15 +530,24 @@ function draw() {
     for (let y = -10; y <= CANVAS_HEIGHT + 10; y += 10) {
         const wy = worldY + (CANVAS_HEIGHT - y);
         const cx = getRiverCenterX(wy);
-        if (y === -10) ctx.moveTo(cx - RIVER_WIDTH / 2, y);
-        else ctx.lineTo(cx - RIVER_WIDTH / 2, y);
+
+        // SỬA DÒNG NÀY: Dùng hàm getRiverWidth(wy)
+        const rWidth = getRiverWidth(wy);
+
+        if (y === -10) ctx.moveTo(cx - rWidth / 2, y);
+        else ctx.lineTo(cx - rWidth / 2, y);
     }
     for (let y = CANVAS_HEIGHT + 10; y >= -10; y -= 10) {
         const wy = worldY + (CANVAS_HEIGHT - y);
         const cx = getRiverCenterX(wy);
-        ctx.lineTo(cx + RIVER_WIDTH / 2, y);
+
+        // SỬA DÒNG NÀY: Dùng hàm getRiverWidth(wy)
+        const rWidth = getRiverWidth(wy);
+
+        ctx.lineTo(cx + rWidth / 2, y);
     }
     ctx.closePath();
+
 
     const riverGradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, 0);
     riverGradient.addColorStop(0, '#1E5A7A');
