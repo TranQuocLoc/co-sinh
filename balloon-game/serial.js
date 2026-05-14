@@ -3,12 +3,19 @@ let serialBuffer = "";
 let calibStep = 0; // 0=Idle, 1=Zero, 2=Left, 3=Right
 let calibMin = parseInt(localStorage.getItem('calibMin')) || -300;
 let calibMax = parseInt(localStorage.getItem('calibMax')) || 300;
+let isCalibratingStep = false;
 
 async function initSerial() {
     if ('serial' in navigator) {
         try {
             port = await navigator.serial.requestPort();
             await port.open({ baudRate: 115200 });
+
+            // Gửi limit đã lưu xuống Arduino
+            setTimeout(() => {
+                sendCommand(`L${calibMin}\n`);
+                setTimeout(() => sendCommand(`U${calibMax}\n`), 100);
+            }, 1000);
 
             const menuConnectBtn = document.getElementById('menuConnectBtn');
             if (menuConnectBtn) {
@@ -82,32 +89,35 @@ function showCalibStep() {
 }
 
 async function nextCalibStep() {
+    if (isCalibratingStep) return;
+    isCalibratingStep = true;
+
     const msg = document.getElementById('calibResultMsg');
-    const currentAngle = (masterValue * 0.18).toFixed(1);
+    const currentAngle = (hardwareValue * 0.18).toFixed(1);
 
     if (calibStep === 1) {
         // Reset hardware: coi vị trí hiện tại là 0
         await sendCommand('R');
         msg.textContent = '✅ Đã đặt góc 0! Đang chuyển sang bước tiếp...';
-        setTimeout(() => { calibStep = 2; showCalibStep(); }, 800);
+        setTimeout(() => { calibStep = 2; showCalibStep(); isCalibratingStep = false; }, 800);
 
     } else if (calibStep === 2) {
         // Lưu góc trái (số âm)
-        const leftPulses = masterValue;
+        const leftPulses = hardwareValue;
         calibMin = leftPulses;
         localStorage.setItem('calibMin', calibMin);
         const leftDeg = (leftPulses * 0.18).toFixed(1);
-        await sendCommand(`L${leftPulses}\n`);
         msg.textContent = `✅ Góc trái tối đa: ${leftDeg}°. Đang chuyển sang bước tiếp...`;
-        setTimeout(() => { calibStep = 3; showCalibStep(); }, 1000);
+        setTimeout(() => { calibStep = 3; showCalibStep(); isCalibratingStep = false; }, 1000);
 
     } else if (calibStep === 3) {
         // Lưu góc phải (số dương)
-        const rightPulses = masterValue;
+        const rightPulses = hardwareValue;
         calibMax = rightPulses;
         localStorage.setItem('calibMax', calibMax);
         const rightDeg = (rightPulses * 0.18).toFixed(1);
-        await sendCommand(`U${rightPulses}\n`);
+        await sendCommand(`L${calibMin}\n`);
+        await sendCommand(`U${calibMax}\n`);
 
         const leftDeg = (calibMin * 0.18).toFixed(1);
         msg.textContent = `✅ Hoàn tất! Trái: ${leftDeg}° | Phải: ${rightDeg}°`;
@@ -118,6 +128,7 @@ async function nextCalibStep() {
             document.getElementById('startScreen').classList.remove('hidden');
             const startBtn = document.getElementById('menuStartBtn');
             if (startBtn) startBtn.classList.remove('disabled');
+            isCalibratingStep = false;
         }, 1200);
     }
 }
@@ -163,8 +174,14 @@ function processSerialLine(line) {
         const newValue = parseInt(slaveMatch[1]);
         if (!isNaN(newValue)) {
             hardwareValue = newValue;
+
+            const angle = (hardwareValue * 0.18).toFixed(1);
+            const angleEl = document.getElementById('angleValue');
+            if (angleEl) angleEl.textContent = angle + '°';
+
             if (calibStep > 0) {
-                document.getElementById('calibHW').textContent = hardwareValue;
+                const calibDisplay = document.getElementById('calibAngleDisplay');
+                if (calibDisplay) calibDisplay.textContent = angle;
             }
         }
     }
@@ -172,16 +189,6 @@ function processSerialLine(line) {
     const masterMatch = line.match(/(?:Master|M):\s*(-?\d+)/);
     if (masterMatch) {
         masterValue = parseInt(masterMatch[1]);
-        const angle = (masterValue * 0.18).toFixed(1);
-
-        const angleEl = document.getElementById('angleValue');
-        if (angleEl) angleEl.textContent = angle + '°';
-
-        // Cập nhật realtime lên màn calibration nếu đang trong quá trình calib
-        if (calibStep > 0) {
-            const calibDisplay = document.getElementById('calibAngleDisplay');
-            if (calibDisplay) calibDisplay.textContent = angle;
-        }
     }
 
     // Cập nhật thông tin debug ẩn
@@ -204,7 +211,7 @@ function startTelemetry() {
     telemetryInterval = setInterval(() => {
         if (typeof gameRunning !== 'undefined' && gameRunning) {
             let tSeconds = ((Date.now() - sessionStartTime) / 1000);
-            let angle = (typeof masterValue === 'number' && !isNaN(masterValue)) ? (masterValue * 0.18) : 0;
+            let angle = (typeof hardwareValue === 'number' && !isNaN(hardwareValue)) ? (hardwareValue * 0.18) : 0;
             let currentScore = typeof score !== 'undefined' ? score : 0;
             let currentLives = typeof lives !== 'undefined' ? lives : 0;
 
@@ -269,6 +276,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         const calibScreen = document.getElementById('calibrationScreen');
         if (calibScreen && !calibScreen.classList.contains('hidden')) {
+            e.preventDefault();
             nextCalibStep();
         }
     }

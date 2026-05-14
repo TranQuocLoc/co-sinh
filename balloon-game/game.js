@@ -268,9 +268,9 @@ function getBiomeAt(worldY) {
     };
 }
 function getRiverCenterX(worldY) {
-    // Tăng biên độ và tần số thêm 20% để sông ngoằn ngoèo hơn
-    const wave1 = Math.sin(worldY * 0.0066) * 105;
-    const wave2 = Math.sin(worldY * 0.0026) * 60;
+    // Độ ngoằn ngoèo bằng 80% so với ban đầu (105 * 0.8 = 84, 60 * 0.8 = 48)
+    const wave1 = Math.sin(worldY * 0.0066) * 84;
+    const wave2 = Math.sin(worldY * 0.0026) * 48;
     return CANVAS_WIDTH / 2 + wave1 + wave2;
 }
 
@@ -388,13 +388,32 @@ function update() {
         boat.velocityX = BOAT_SPEED;
         boat.targetTilt = 0.3;
     } else if (typeof port !== 'undefined' && port) {
-        let range = (typeof calibMax !== 'undefined' ? calibMax : 100) - (typeof calibMin !== 'undefined' ? calibMin : -100);
-        if (range === 0) range = 1;
+        let cMin = typeof calibMin !== 'undefined' ? calibMin : -300;
+        let cMax = typeof calibMax !== 'undefined' ? calibMax : 300;
 
-        let ratio = ((typeof masterValue !== 'undefined' ? masterValue : 0) - (typeof calibMin !== 'undefined' ? calibMin : -100)) / range;
-        ratio = Math.max(0, Math.min(1, ratio));
+        // Dùng trị tuyệt đối để sửa lỗi calibration lưu sai dấu âm/dương từ bản cũ
+        let maxLeftPulses = Math.abs(cMin) || 300;
+        let maxRightPulses = Math.abs(cMax) || 300;
 
-        const targetX = ratio * CANVAS_WIDTH;
+        let hwVal = typeof hardwareValue !== 'undefined' ? hardwareValue : 0;
+
+        // TÍNH TOÁN ABSOLUTE MAPPING (Cố định tâm màn hình)
+        // Yêu cầu: -70 độ chạm rìa 30cm, 0 độ ở giữa, 30 độ chạm rìa 70cm
+        const fixedRiverWidth = 226; // Độ rộng sông chuẩn
+        const maxOffset = (fixedRiverWidth / 2) - (boat.width / 2) - 1; // 97px: Khoảng cách từ tâm đến mép sông an toàn
+
+        let targetX = CANVAS_WIDTH / 2; // Bắt đầu ở tâm màn hình
+
+        if (hwVal < 0) {
+            let ratio = Math.abs(hwVal) / maxLeftPulses;
+            ratio = Math.max(0, Math.min(1, ratio));
+            targetX = (CANVAS_WIDTH / 2) - ratio * maxOffset; // Chia tỉ lệ chuẩn xác từ tâm ra rìa trái
+        } else {
+            let ratio = Math.abs(hwVal) / maxRightPulses;
+            ratio = Math.max(0, Math.min(1, ratio));
+            targetX = (CANVAS_WIDTH / 2) + ratio * maxOffset; // Chia tỉ lệ chuẩn xác từ tâm ra rìa phải
+        }
+
         const ease = 0.135;
         const lastX = boat.x;
         boat.x += (targetX - boat.x) * ease;
@@ -412,7 +431,7 @@ function update() {
 
     boat.tilt += (boat.targetTilt - boat.tilt) * 0.135;
 
-    // Bounds check
+    // Bounds check - Giới hạn không cho văng khỏi màn hình
     if (boat.x < 0) boat.x = 0;
     if (boat.x > CANVAS_WIDTH) boat.x = CANVAS_WIDTH;
 
