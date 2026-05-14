@@ -233,11 +233,30 @@ async function stopAndSaveSession() {
     const maxRight = Math.max(...angles); // số dương nhất
     const finalScore = typeof score !== 'undefined' ? score : 0;
 
+    // --- TÍNH TOÁN ROM (Range of Motion) ---
+    const patientROMDeg = maxRight - maxLeft;
+    const radiusMm = 82; // Bán kính tay đòn (mm)
+    const patientRomArcMm = patientROMDeg * (Math.PI / 180) * radiusMm;
+
+    // ROM Tối đa của thiết bị theo thiết kế (Trái kịch 72°, Phải kịch 32°)
+    const deviceMaxRomDeg = 72 + 32; // 104 độ
+    const deviceMaxArcMm = deviceMaxRomDeg * (Math.PI / 180) * radiusMm;
+
+    // Hiển thị ra màn hình Game Over
+    const romTextEl = document.getElementById('romTextResult');
+    if (romTextEl) {
+        romTextEl.innerHTML =
+            `Quãng đường BN đạt được: <b>${patientROMDeg.toFixed(1)}°</b> (~${patientRomArcMm.toFixed(1)} mm)<br>` +
+            `<span style="color:#aaa; font-size:11px;">(Tối đa thiết bị: ${deviceMaxRomDeg}° ~${deviceMaxArcMm.toFixed(1)} mm)</span>`;
+    }
+
     const payload = {
         patient_id: currentPatientId,  // null nếu chưa chọn
         duration_s: parseFloat(duration.toFixed(1)),
         max_left_deg: parseFloat(maxLeft.toFixed(1)),
         max_right_deg: parseFloat(maxRight.toFixed(1)),
+        patient_rom_deg: parseFloat(patientROMDeg.toFixed(1)),
+        patient_rom_arc_mm: parseFloat(patientRomArcMm.toFixed(1)),
         final_score: finalScore,
         telemetry: telemetryData
     };
