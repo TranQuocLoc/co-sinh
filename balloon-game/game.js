@@ -36,7 +36,6 @@ let worldY = 0; // Tracks total distance scrolled
 // Biomes configuration
 const BIOMES = [
     { name: 'Jungle', ground: '#2E4015', decors: ['tree', 'bush'] },
-    { name: 'Desert', ground: '#D4AC0D', decors: ['cactus', 'dry_rock'] },
     { name: 'Savanna', ground: '#A0935B', decors: ['dead_tree', 'bush'] },
     { name: 'Temperate', ground: '#5C4033', decors: ['tree', 'dry_rock'] },
     { name: 'Taiga', ground: '#273746', decors: ['pine_tree', 'dry_rock'] },
@@ -297,21 +296,21 @@ function spawnRock() {
     // THÊM DÒNG NÀY: Không sinh đá trong khoảng nửa màn hình đầu tiên
     if (spawnWorldY < CANVAS_HEIGHT / 2) return;
 
-    // Giảm lượng đá đi 20% với level 2 (0.04), level 3 giảm 10% (0.045)
+    const biome = getBiomeAt(spawnWorldY);
+
     const spawnChance = currentLevel === 2 ? 0.04 : 0.045;
+
     if (Math.random() > spawnChance) return;
 
     const tooClose = rocks.some(r => Math.abs(r.worldY - spawnWorldY) < 150);
     if (!tooClose) {
         const centerX = getRiverCenterX(spawnWorldY);
-
-        // SỬA DÒNG NÀY: Dùng hàm getRiverWidth thay cho hằng số
         const currentRiverWidth = getRiverWidth(spawnWorldY);
         const maxOffset = currentRiverWidth / 2 - ROCK_RADIUS * 1.5;
-
         const xOffset = (Math.random() * 2 - 1) * maxOffset;
 
-        // Tạo hình dáng đa giác ngẫu nhiên cho viên đá
+        const isIce = biome.name === 'Ice';
+
         const points = [];
         const numPoints = 6 + Math.floor(Math.random() * 4); // Từ 6 đến 9 điểm
         for (let i = 0; i < numPoints; i++) {
@@ -319,9 +318,6 @@ function spawnRock() {
             const r = ROCK_RADIUS * (0.6 + Math.random() * 0.5); // Bán kính lồi lõm
             points.push({ x: r * Math.cos(angle), y: r * Math.sin(angle) });
         }
-
-        const biome = getBiomeAt(spawnWorldY);
-        const isIce = biome.name === 'Ice';
 
         rocks.push({
             x: centerX + xOffset,
@@ -334,10 +330,15 @@ function spawnRock() {
 }
 
 function spawnDecoration() {
-    if (Math.random() > 0.1) return; // Tần suất cây cối 2 bên bờ
-
     const spawnWorldY = worldY + CANVAS_HEIGHT + 100;
     const biome = getBiomeAt(spawnWorldY);
+
+    if (biome.name === 'Ice') return; // Bỏ hết cây ở màn tuyết
+
+    const baseChance = 0.1;
+    const chance = (biome.name === 'Savanna') ? baseChance * 0.3 : baseChance;
+
+    if (Math.random() > chance) return;
 
     const centerX = getRiverCenterX(spawnWorldY);
     const isLeft = Math.random() > 0.5;
@@ -352,7 +353,8 @@ function spawnDecoration() {
         x: x,
         worldY: spawnWorldY,
         type: type,
-        size: 20 + Math.random() * 20
+        size: 20 + Math.random() * 20,
+        biomeName: biome.name
     });
 }
 
@@ -566,7 +568,7 @@ function draw() {
     // 3. Vẽ Đồ Trang trí (Cây, Xương rồng...)
     decorations.forEach(dec => {
         const screenY = CANVAS_HEIGHT - (dec.worldY - worldY);
-        drawDecoration(dec.x, screenY, dec.size, dec.type);
+        drawDecoration(dec.x, screenY, dec.size, dec.type, dec.biomeName);
     });
 
     // 4. Vẽ Đá Ngầm
@@ -600,7 +602,6 @@ function drawRock(cx, cy, points, isIce = false) {
     });
     ctx.closePath();
 
-    // Màu đá tùy thuộc là băng hay đá thường
     ctx.fillStyle = isIce ? '#AED6F1' : '#5D6D7E';
     ctx.fill();
     ctx.lineWidth = 2;
@@ -618,20 +619,20 @@ function drawRock(cx, cy, points, isIce = false) {
     ctx.restore();
 }
 
-function drawDecoration(cx, cy, size, type) {
+function drawDecoration(cx, cy, size, type, biomeName) {
     ctx.save();
     ctx.translate(cx, cy);
 
     if (type === 'tree') {
         // Thân cây
-        ctx.fillStyle = '#6E2C00';
+        ctx.fillStyle = (biomeName === 'Savanna') ? '#8B5A2B' : '#6E2C00';
         ctx.fillRect(-size / 4, 0, size / 2, size);
         // Tán lá
-        ctx.fillStyle = '#1E8449';
+        ctx.fillStyle = (biomeName === 'Savanna') ? '#6B8E23' : '#1E8449';
         ctx.beginPath();
         ctx.arc(0, -size / 2, size, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#117A65';
+        ctx.fillStyle = (biomeName === 'Savanna') ? '#506419' : '#117A65';
         ctx.beginPath();
         ctx.arc(-size / 2, -size / 4, size * 0.8, 0, Math.PI * 2);
         ctx.arc(size / 2, -size / 4, size * 0.8, 0, Math.PI * 2);
@@ -683,18 +684,42 @@ function drawDecoration(cx, cy, size, type) {
         ctx.fill();
     } else if (type === 'dry_rock') {
         ctx.fillStyle = '#A04000';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, size, size / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
         ctx.strokeStyle = '#6E2C00';
         ctx.lineWidth = 2;
+
+        const r = size;
+        ctx.beginPath();
+        ctx.moveTo(-r, 0);
+        ctx.lineTo(-r * 0.5, -r * 0.8);
+        ctx.lineTo(r * 0.5, -r * 0.7);
+        ctx.lineTo(r, 0);
+        ctx.lineTo(r * 0.6, r * 0.6);
+        ctx.lineTo(-r * 0.4, r * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Add some geometric details inside
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.5, -r * 0.8);
+        ctx.lineTo(0, 0);
+        ctx.lineTo(r * 0.6, r * 0.6);
         ctx.stroke();
     } else if (type === 'ice_rock') {
         ctx.fillStyle = '#AED6F1';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, size, size / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
         ctx.strokeStyle = '#2874A6';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.rect(-size, -size / 2, size * 2, size);
+        ctx.fill();
+        ctx.stroke();
+
+        // Add a highlight
+        ctx.beginPath();
+        ctx.moveTo(-size + 5, -size / 2 + 5);
+        ctx.lineTo(size - 5, -size / 2 + 5);
+        ctx.strokeStyle = '#EBF5FB';
         ctx.lineWidth = 2;
         ctx.stroke();
     } else if (type === 'dead_tree') {
