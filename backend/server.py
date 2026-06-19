@@ -69,6 +69,13 @@ def init_db():
         )
     """)
 
+    try:
+        c.execute("ALTER TABLE telemetry ADD COLUMN force_n REAL DEFAULT 0")
+        c.execute("ALTER TABLE telemetry ADD COLUMN current_ma REAL DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
     print(f"✅ Database sẵn sàng tại: {DB_PATH}")
@@ -208,23 +215,25 @@ def save_session():
     # Lưu phiên tập
     cur = conn.execute(
         """INSERT INTO sessions
-           (patient_id, date, duration_s, max_left_deg, max_right_deg, final_score)
-           VALUES (?,?,?,?,?,?)""",
+           (patient_id, date, duration_s, max_left_deg, max_right_deg, final_score, rom_cm)
+           VALUES (?,?,?,?,?,?,?)""",
         (data.get("patient_id"),
          today,
          data.get("duration_s", 0),
          data.get("max_left_deg", 0),
          data.get("max_right_deg", 0),
-         data.get("final_score", 0))
+         data.get("final_score", 0),
+         data.get("rom_cm", 0))
     )
     session_id = cur.lastrowid
 
     # Lưu từng điểm telemetry
     rows = [(session_id, t.get("t", 0), t.get("angle", 0),
-             t.get("score", 0), t.get("lives", 0))
+             t.get("score", 0), t.get("lives", 0),
+             t.get("force_n", 0), t.get("current_ma", 0))
             for t in data.get("telemetry", [])]
     conn.executemany(
-        "INSERT INTO telemetry (session_id,t_seconds,angle_deg,score,lives) VALUES (?,?,?,?,?)",
+        "INSERT INTO telemetry (session_id,t_seconds,angle_deg,score,lives,force_n,current_ma) VALUES (?,?,?,?,?,?,?)",
         rows
     )
 
@@ -252,7 +261,7 @@ def get_telemetry(sid):
     """Lấy dữ liệu góc chi tiết của 1 phiên tập"""
     conn = get_db()
     rows = conn.execute(
-        "SELECT t_seconds, angle_deg, score, lives FROM telemetry WHERE session_id=? ORDER BY t_seconds",
+        "SELECT t_seconds, angle_deg, score, lives, force_n, current_ma FROM telemetry WHERE session_id=? ORDER BY t_seconds",
         (sid,)
     ).fetchall()
     conn.close()

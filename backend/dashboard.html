@@ -106,6 +106,10 @@
                 <div class="chart-box">
                     <h3 id="chart-title">Biểu Đồ Góc Cổ Tay — Chọn một phiên tập bên trên</h3>
                     <canvas id="angle-chart" height="100"></canvas>
+                    
+                    <div id="rom-display" style="text-align: center; margin-top: 15px; font-size: 18px; font-weight: bold; color: #ff9800; display: none;">
+                        Thành tích ROM: <span id="max-rom-value" style="font-size: 24px; color: #fff;">0.0</span> cm
+                    </div>
                 </div>
 
                 <!-- Ghi chú bác sĩ -->
@@ -144,7 +148,7 @@
     </div>
 
     <!-- JS ở cuối body để DOM đã load đầy đủ trước khi script chạy -->
-    <script src="dashboard.js"></script>
+    <script src="dashboard.js?v=9"></script>
 
 </body>
 

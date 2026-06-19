@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎈 Balloon Adventure</title>
+    <title>⛵ River Boat Adventure</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -15,7 +15,7 @@
             <div class="stat">ĐIỂM: <span id="score">0</span></div>
             <div class="stat">KỶ LỤC: <span id="highScore">0</span></div>
             <div class="stat">GÓC CỔ TAY: <span id="angleValue">0°</span></div>
-            <button class="pixel-btn-small hidden" id="resetBtn" onclick="resetHardware()">🔄 RESET GÓC</button>
+            <button class="pixel-btn-small hidden" id="resetBtn" onclick="resetHardware()">RESET GÓC</button>
             <button class="pause-btn" id="pauseBtn" onclick="togglePause()">II</button>
         </div>
 
@@ -27,42 +27,47 @@
 
         <div class="game-overlay" id="startScreen">
             <div class="overlay-content">
-                <h1>🎈 BALLOON</h1>
+                <h1>⛵ RIVER BOAT</h1>
                 <h2>ADVENTURE</h2>
                 <div class="instructions">
                     <p>← → or A D to move</p>
-                    <p>⬡ Collect coins & gems</p>
-                    <p>▼ Avoid spikes!</p>
+                    <p>⬡ Avoid Rocks</p>
+                    <p>▼ Sail down the river!</p>
                 </div>
-                
-                <button class="pixel-btn-small" id="menuSafeSetupBtn" onclick="beginSafetySetup()" style="margin-bottom: 20px; display: none;">⚙️ 2. BẮT ĐẦU CÀI ĐẶT AN TOÀN</button>
-                
-                <div class="safety-menu" id="safetyMenu" style="display: none;">
-                    <h3>⚙️ NHẬP LỆNH GIỚI HẠN</h3>
-                    <div class="input-group">
-                        <label>Góc Trái Cực Đại (Âm °): </label>
-                        <input type="number" id="limitLeft" value="-73" min="-73" max="0">
-                    </div>
-                    <div class="input-group">
-                        <label>Góc Phải Cực Đại (Dương °): </label>
-                        <input type="number" id="limitRight" value="30" min="0" max="30">
-                    </div>
-                    <button class="pixel-btn-small" onclick="confirmSafetyAndTest()" style="margin-top: 15px; width: 100%; background: #e74c3c;">XÁC NHẬN & CHẠY TEST</button>
-                </div>
+
+                <button class="pixel-btn-small" id="menuSafeSetupBtn" onclick="beginSafetySetup()"
+                    style="margin-bottom: 20px; display: none;">⚙️ 2. CÀI ĐẶT GÓC AN TOÀN</button>
 
                 <div class="menu-actions">
-                    <button class="pixel-btn-small" id="menuConnectBtn" onclick="initSerial()">1. KẾT NỐI MẠCH REHAB</button>
+                    <button class="pixel-btn-small" id="menuConnectBtn" onclick="initSerial()">1. KẾT NỐI MẠCH</button>
                 </div>
 
-                <div class="safety-menu" style="margin-top: 16px; background: #fff9f0; padding: 10px 15px; border-color: #f5a623;">
-                    <h3 style="color: #f5a623;">&#129298; THÔNG TIN BỆNH NHÂN</h3>
+                <div class="safety-menu"
+                    style="margin-top: 16px; background: #fff9f0; padding: 10px 15px; border-color: #f5a623;">
+                    <h3 style="color: #f5a623;">THÔNG TIN BỆNH NHÂN</h3>
                     <div class="input-group">
                         <label>Tên Bệnh Nhân: </label>
                         <input type="text" id="patientName" placeholder="Nguyễn Văn A" style="width: 140px;">
                     </div>
                 </div>
 
-                <button class="pixel-btn disabled" id="menuStartBtn" onclick="startGame()">▶ 3. CHƠI GAME</button>
+                <button class="pixel-btn disabled" id="menuStartBtn" onclick="showLevelScreen()">▶ CHƠI GAME</button>
+            </div>
+        </div>
+
+        <div class="game-overlay hidden" id="levelScreen">
+            <div class="overlay-content">
+                <h2>CHỌN ĐỘ KHÓ</h2>
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                    <button class="pixel-btn" style="background-color: #27AE60;" onclick="startGameWithLevel(1)">LEVEL
+                        1</button>
+                    <button class="pixel-btn" style="background-color: #F39C12;" onclick="startGameWithLevel(2)">LEVEL
+                        2</button>
+                    <button class="pixel-btn" style="background-color: #C0392B;" onclick="startGameWithLevel(3)">LEVEL
+                        3</button>
+                </div>
+                <button class="pixel-btn-small" style="margin-top: 20px; background-color: #7F8C8D;"
+                    onclick="backToMainMenu()">Quay Lại</button>
             </div>
         </div>
 
@@ -78,24 +83,30 @@
             <div class="overlay-content">
                 <h1>GAME OVER</h1>
                 <p class="final-score">SCORE: <span id="finalScore">0</span></p>
+                <p class="final-score" style="font-size: 24px; color: #F39C12; margin-top: 5px;">ROM: <span id="finalRom">0.0</span> cm</p>
                 <p class="new-record hidden" id="newHighScore">★ NEW RECORD! ★</p>
                 <button class="pixel-btn" onclick="restartGame()">RETRY</button>
-                <button class="pixel-btn" onclick="goToMainMenu()" style="margin-top:10px; background:#555;">MAIN MENU</button>
+                <button class="pixel-btn" onclick="goToMainMenu()" style="margin-top:10px; background:#555;">MAIN
+                    MENU</button>
             </div>
         </div>
 
         <div class="game-overlay hidden" id="calibrationScreen">
             <div class="overlay-content">
-                <h1 id="calibTitle">CALLIB</h1>
-                <p id="calibDesc">Hãy xoay hết cỡ sang TRÁI</p>
-                <div class="stat">HW: <span id="calibHW">0</span></div>
-                <button class="pixel-btn" id="calibNextBtn" onclick="nextCalibStep()">XÁC NHẬN</button>
+                <h2 id="calibTitle">BƯỚC 1/3</h2>
+                <p id="calibDesc" style="font-size:14px; margin: 10px 0 5px;"></p>
+                <div style="font-size: 36px; font-weight: bold; margin: 10px 0; color: #F39C12;">
+                    <span id="calibAngleDisplay">0.0</span>°
+                </div>
+                <p id="calibResultMsg" style="font-size:13px; color:#27AE60; min-height:20px;"></p>
+                <button class="pixel-btn" id="calibNextBtn" onclick="nextCalibStep()" style="margin-top:10px;">✅ Xác
+                    nhận</button>
             </div>
         </div>
     </div>
 
-    <script src="game.js"></script>
-    <script src="serial.js"></script>
+    <script src="game.js?v=7"></script>
+    <script src="serial.js?v=7"></script>
 </body>
 
 </html>

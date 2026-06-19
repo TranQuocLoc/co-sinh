@@ -1,65 +1,85 @@
 /*
  * Wrist Rehabilitation System - ARDUINO NANO (PRECISION MODE)
  * -----------------------------------------------------------
- * - Fix lỗi "Stiction": Bù lực ma sát để motor quay chậm mượt mà.
- * - Hỗ trợ lệnh 'T' để cân bằng góc độ chính xác.
+ * v2.1 - DECELERATION CLUTCH
+ * Thêm: Phát hiện tay đang hãm → giảm lực motor tỉ lệ thuận với tốc độ
+ * → Không cần đợi timeout mới nhả lực, bệnh nhân đổi chiều dễ dàng hơn
  */
 
-#include <util/atomic.h>
-#include <Wire.h>
 #include <Adafruit_INA219.h>
+#include <Wire.h>
+#include <util/atomic.h>
 
 Adafruit_INA219 ina219;
 
-// --- BỘ LỌC DÒNG ĐIỆN (MOVING AVERAGE) ---
-const int numReadings = 10;       // Lấy trung bình 10 lần đọc liên tiếp
-float currentReadings[numReadings]; 
+const int numReadings = 10;
+float currentReadings[numReadings];
 int readIndex = 0;
 float totalCurrent = 0;
 float averageCurrent = 0;
 
 // --- CONFIGURATION ---
-float SCALE_FACTOR = 0.8415; // Tăng thêm 2% từ 0.8250 để bù sai số tích lũy
-int DEADBAND = 4;            // Giảm deadband để chính xác hơn nhưng sẽ bù bằng S-Curve
-bool REVERSE_MOTOR = true;   
+float SCALE_FACTOR = -2.5245f;
+int DEADBAND = 3;
+bool REVERSE_MOTOR = false;
 
-// PID Medical-Grade Smooth Constants
-float Kp = 1.0;  // Giảm Kp để tránh "giật" phản ứng
-float Ki = 0.15; // Tăng Ki để motor "trôi" êm về đích
-float Kd = 2.0;  // Tăng mạnh Kd để giảm rung động cơ khí
+// Giới hạn góc an toàn (theo xung slave)
+long limitMin = -999999;
+long limitMax = 999999;
+
+float Kp = 0.8;
+float Ki = 0.0;
+float Kd = 1.0;
 float integral = 0;
 float lastError = 0;
 
-int MIN_MOVING_PWM = 70; // Lực khở i động êm
+int MIN_MOVING_PWM = 60; // ↓ Giảm từ 60 → 40
 
-// Bộ lọc Alpha lọc cực mạnh
-float alpha = 0.10; 
+float alpha = 0.5; // ↓ Giảm từ 0.5 → 0.15 (bám nhanh hơn)
 float targetSmoothed = 0;
 
-// --- PINS ---
-const int PIN_MASTER_A = 2; 
-const int PIN_MASTER_B = 4;
-const int PIN_SLAVE_A = 3;  
-const int PIN_SLAVE_B = 5;
+// --- CLUTCH TIMEOUT ---
+unsigned long lastMasterMoveTime = 0;
+long lastMasterPosCheck = 0;
+int STOP_TIMEOUT_MS = 30; // ↓ Giảm từ 100 → 30ms
 
+long masterBase = 0;
+long slaveBase = 0;
+
+// ★ DECELERATION CLUTCH - Biến mới ★
+float masterVel = 0;           // Vận tốc hiện tại (ticks/s)
+float masterVelPrev = 0;       // Vận tốc chu kỳ trước
+long masterPosPrev = 0;        // Vị trí master chu kỳ trước
+unsigned long velCalcTime = 0; // Thời điểm tính vel lần cuối
+float VEL_MAX = 80.0f;         // Ngưỡng "đang chạy nhanh" — chỉnh theo thực tế
+
+// --- PINS ---
+const int PIN_MASTER_A = 2;
+const int PIN_MASTER_B = 4;
+const int PIN_SLAVE_A = 3;
+const int PIN_SLAVE_B = 5;
 const int PIN_IN1 = 8;
 const int PIN_IN2 = 9;
-const int PIN_ENA = 10; 
+const int PIN_ENA = 10;
 
-// --- VARIABLES & FUNCTIONS ---
 volatile long masterPos = 0;
 volatile long slavePos = 0;
 
 void readMaster() {
-  if (digitalRead(PIN_MASTER_B) == LOW) masterPos--;
-  else masterPos++;
+  if (digitalRead(PIN_MASTER_B) == LOW)
+    masterPos++;
+  else
+    masterPos--;
 }
 
 void readSlave() {
-  if (digitalRead(PIN_SLAVE_B) == LOW) slavePos--;
-  else slavePos++;
+  if (digitalRead(PIN_SLAVE_B) == LOW)
+    slavePos++;
+  else
+    slavePos--;
 }
 
+// ============================================================
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_IN1, OUTPUT);
@@ -74,25 +94,21 @@ void setup() {
   pinMode(PIN_SLAVE_B, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_SLAVE_A), readSlave, RISING);
 
-  Serial.println("\n--- MEDICAL REHAB SYSTEM: ULTRA-SMOOTH V2 ---");
+  Serial.println(F("\n--- MEDICAL REHAB v2.1: DECEL CLUTCH ---"));
 
-  // --- KHỞI TẠO INA219 ---
   if (!ina219.begin()) {
-    Serial.println("LỖI: Không tìm thấy module INA219!");
-    // Dừng hệ thống nếu không thấy cảm biến
-    while (1) { delay(10); }
+    Serial.println(F("LOI: Khong tim thay INA219!"));
+    while (1) {
+      delay(10);
+    }
   }
-  
-  // Set thang đo 32V, 2A để đủ sức chịu tải dòng cao của GA25
   ina219.setCalibration_32V_2A();
-  Serial.println("INA219 OK - Thang do: 32V_2A");
-
-  // Khởi tạo mảng lọc giá trị về 0
-  for (int i = 0; i < numReadings; i++) {
+  Serial.println(F("INA219 OK - 32V_2A"));
+  for (int i = 0; i < numReadings; i++)
     currentReadings[i] = 0;
-  }
-} // Đóng hàm setup() tại đây
+}
 
+// ============================================================
 void loop() {
   handleSerial();
 
@@ -102,67 +118,146 @@ void loop() {
     currentSlave = slavePos;
   }
 
-  // 1. Target Smoothing cực mạnh (Lọc nhiễu tay người)
-  long rawTarget = (long)(currentMaster * SCALE_FACTOR);
-  targetSmoothed = (alpha * rawTarget) + ((1.0 - alpha) * targetSmoothed);
+  unsigned long now = millis();
 
-  // 2. PID
+  // ★ 0. TÍNH VẬN TỐC MASTER (mỗi 20ms) ★
+  if (now - velCalcTime >= 20) {
+    float dt_s = (now - velCalcTime) / 1000.0f;
+    masterVelPrev = masterVel;
+    masterVel = (currentMaster - masterPosPrev) / dt_s; // ticks/s
+    masterPosPrev = currentMaster;
+    velCalcTime = now;
+  }
+
+  // ★ DECEL FACTOR: tỉ lệ lực theo tốc độ hiện tại ★
+  // velScale = 0 khi đứng yên, = 1 khi đạt VEL_MAX
+  // → Motor tự động nhả lực khi tay chậm lại, TRƯỚC khi timeout
+  float velScale = constrain(abs(masterVel) / VEL_MAX, 0.0f, 1.0f);
+
+  // 1. KIỂM TRA CHUYỂN ĐỘNG VÀ ĐẢO CHIỀU
+  static int lastMasterDirection = 0;
+
+  if (abs(currentMaster - lastMasterPosCheck) > 0) {
+    int currentDirection = (currentMaster > lastMasterPosCheck) ? 1 : -1;
+
+    if (currentDirection != lastMasterDirection) {
+      masterBase = currentMaster;
+      slaveBase = currentSlave;
+      lastMasterDirection = currentDirection;
+      targetSmoothed = (float)currentSlave;
+      integral = 0;
+      driveMotor(0); // ★ Ngắt lực NGAY khi phát hiện đảo chiều
+    }
+
+    lastMasterPosCheck = currentMaster;
+    lastMasterMoveTime = now;
+  }
+
+  // 2. QUỸ ĐẠO MỤC TIÊU
+  long rawTarget =
+      slaveBase + (long)((currentMaster - masterBase) * SCALE_FACTOR);
+
+  // ★ GIỚI HẠN TARGET THEO GÓC AN TOÀN ★
+  long actMin = min(limitMin, limitMax);
+  long actMax = max(limitMin, limitMax);
+  rawTarget = constrain(rawTarget, actMin, actMax);
+
+  targetSmoothed = (alpha * rawTarget) + ((1.0f - alpha) * targetSmoothed);
+
+  // 3. CLUTCH TIMEOUT (backup nếu decel không đủ)
+  if (now - lastMasterMoveTime > STOP_TIMEOUT_MS) {
+    targetSmoothed = (float)currentSlave;
+    masterBase = currentMaster;
+    slaveBase = currentSlave;
+    integral = 0;
+    lastError = 0;
+
+    // ★ KIỂM TRA VƯỢT GÓC AN TOÀN KHI THẢ LỎNG ★
+    if (currentSlave < actMin) {
+      targetSmoothed = (float)actMin;
+    } else if (currentSlave > actMax) {
+      targetSmoothed = (float)actMax;
+    } else {
+      driveMotor(0);
+      return; // Thoát sớm, không chạy PID
+    }
+  }
+
+  // 4. PID + DECEL SCALE
   float error = targetSmoothed - (float)currentSlave;
 
   if (abs(error) > DEADBAND) {
-    integral = constrain(integral + error, -80, 80);
     float derivative = error - lastError;
     float output = (Kp * error) + (Ki * integral) + (Kd * derivative);
-    
-    if (REVERSE_MOTOR) output = -output;
+
+    output = constrain(output, -35.0f, 35.0f); // ↓ Giảm từ ±60 → ±35
+
+    // ★ Nếu đang vượt ngoài góc an toàn, bỏ qua decel clutch để tạo lực cản
+    bool outOfBounds = (currentSlave < actMin || currentSlave > actMax);
+    if (!outOfBounds) {
+      output = output * velScale;
+    }
+
+    if (REVERSE_MOTOR)
+      output = -output;
     driveMotor(output);
   } else {
     driveMotor(0);
-    integral = 0; 
+    integral = 0;
   }
   lastError = error;
 
-  // --- ĐỌC VÀ LỌC DÒNG ĐIỆN TỪ INA219 ---
-  // Phải dùng millis() để giới hạn tần suất đọc I2C, nếu không sẽ làm delay vòng lặp PID!
+  // 5. ĐỌC DÒNG INA219
   static unsigned long lastInaRead = 0;
-  if (millis() - lastInaRead > 20) { // Đọc mỗi 20ms (tương đương 50 lần/giây)
-    totalCurrent = totalCurrent - currentReadings[readIndex];
+  if (now - lastInaRead > 20) {
+    totalCurrent -= currentReadings[readIndex];
     currentReadings[readIndex] = ina219.getCurrent_mA();
-    totalCurrent = totalCurrent + currentReadings[readIndex];
+    totalCurrent += currentReadings[readIndex];
     readIndex = (readIndex + 1) % numReadings;
-    averageCurrent = totalCurrent / numReadings; // Ra được dòng điện đã lọc mượt
-    lastInaRead = millis();
+    averageCurrent = totalCurrent / numReadings;
+    lastInaRead = now;
   }
 
+  // 6. SERIAL LOG
   static unsigned long lastPrint = 0;
-  if (millis() - lastPrint > 250) {
-    Serial.print("Master:"); Serial.print(currentMaster);
-    Serial.print(" | Target:"); Serial.print(rawTarget);
-    Serial.print(" | Slave:"); Serial.print(currentSlave);
-    Serial.print(" | Scale:"); Serial.print(SCALE_FACTOR, 4);
-    // In thêm dòng điện ra Serial Monitor
-    Serial.print(" | Force(mA):"); Serial.println(averageCurrent, 1);
-    lastPrint = millis();
+  if (now - lastPrint > 20) {
+    Serial.print(F("M:"));
+    Serial.print(currentMaster);
+    Serial.print(F(" T:"));
+    Serial.print(rawTarget);
+    Serial.print(F(" S:"));
+    Serial.print(currentSlave);
+    Serial.print(F(" Vel:"));
+    Serial.print(masterVel, 1);
+    Serial.print(F(" vScale:"));
+    Serial.print(velScale, 2);
+    Serial.print(F(" F(mA):"));
+    Serial.println(averageCurrent, 1);
+    lastPrint = now;
   }
 }
 
+
 void driveMotor(float power) {
   float absPower = abs(power);
-  if (absPower < 1) { 
-    digitalWrite(PIN_IN1, LOW); digitalWrite(PIN_IN2, LOW); analogWrite(PIN_ENA, 0);
+  if (absPower < 1.0f) {
+    digitalWrite(PIN_IN1, LOW);
+    digitalWrite(PIN_IN2, LOW);
+    analogWrite(PIN_ENA, 0);
     return;
   }
 
-  // Hàm S-Curve đơn giản: PWM tăng dần chậm ở mức thấp để tránh "kick" giật
-  // Thay vì map tuyến tính, ta dùng bình phương để lực vào êm hơn ở ngưỡng bắt đầu
-  float normalized = constrain(absPower / 150.0, 0, 1); // 150 là ngưỡng lực tối đa cho mượt
-  int pwmValue = MIN_MOVING_PWM + (int)((255 - MIN_MOVING_PWM) * (normalized * normalized));
-  pwmValue = constrain(pwmValue, 0, 255);
+  float normalized = constrain(absPower / 500.0f, 0, 1);
+  int pwmValue = MIN_MOVING_PWM +
+                 (int)((255 - MIN_MOVING_PWM) * (normalized * normalized));
+  pwmValue = constrain(pwmValue, 0, 100);
 
-  if (power > 0) { 
-    digitalWrite(PIN_IN1, HIGH); digitalWrite(PIN_IN2, LOW); 
+  if (power > 0) {
+    digitalWrite(PIN_IN1, HIGH);
+    digitalWrite(PIN_IN2, LOW);
   } else {
-    digitalWrite(PIN_IN1, LOW); digitalWrite(PIN_IN2, HIGH); 
+    digitalWrite(PIN_IN1, LOW);
+    digitalWrite(PIN_IN2, HIGH);
   }
   analogWrite(PIN_ENA, pwmValue);
 }
@@ -170,11 +265,49 @@ void driveMotor(float power) {
 void handleSerial() {
   if (Serial.available()) {
     char cmd = Serial.read();
-    if (cmd == 'S') SCALE_FACTOR = Serial.parseFloat();
-    if (cmd == 'P') Kp = Serial.parseFloat();
-    if (cmd == 'I') Ki = Serial.parseFloat();
-    if (cmd == 'M') MIN_MOVING_PWM = Serial.parseInt(); // Chỉnh lực khởi động
-    if (cmd == 'R') { ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { masterPos = 0; slavePos = 0; targetSmoothed = 0; } }
-    if (cmd == 'F') REVERSE_MOTOR = !REVERSE_MOTOR;
+    if (cmd == 'S')
+      SCALE_FACTOR = Serial.parseFloat();
+    if (cmd == 'P')
+      Kp = Serial.parseFloat();
+    if (cmd == 'I')
+      Ki = Serial.parseFloat();
+    if (cmd == 'M')
+      MIN_MOVING_PWM = Serial.parseInt();
+    if (cmd == 'V')
+      VEL_MAX = Serial.parseFloat(); // ★ Chỉnh VEL_MAX qua Serial
+    if (cmd == 'R') {
+      ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        masterPos = 0;
+        slavePos = 0;
+        targetSmoothed = 0;
+        masterBase = 0;
+        slaveBase = 0;
+      }
+      masterVel = 0;
+      masterVelPrev = 0;
+      limitMin = -999999;
+      limitMax = 999999;
+    }
+    if (cmd == 'F') {
+      SCALE_FACTOR = -SCALE_FACTOR;
+      long sNow;
+      ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { sNow = slavePos; }
+      targetSmoothed = (float)sNow;
+      integral = 0;
+      lastError = 0;
+      driveMotor(0);
+      Serial.print(F("DAO CHIEU -> Scale: "));
+      Serial.println(SCALE_FACTOR, 4);
+    }
+    if (cmd == 'L') {
+      limitMin = Serial.parseInt();
+      Serial.print(F("Limit MIN: "));
+      Serial.println(limitMin);
+    }
+    if (cmd == 'U') {
+      limitMax = Serial.parseInt();
+      Serial.print(F("Limit MAX: "));
+      Serial.println(limitMax);
+    }
   }
 }
